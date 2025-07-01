@@ -20,7 +20,11 @@ def save_db(db):
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHAT_ID, "text": text})
+    try:
+        response = requests.post(url, json={"chat_id": CHAT_ID, "text": text})
+        print("TELEGRAM RESPONSE:", response.status_code, response.text)
+    except Exception as e:
+        print("TELEGRAM ERROR:", e)
 
 @app.route("/data", methods=["POST"])
 def data():
