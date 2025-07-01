@@ -8,8 +8,8 @@ app = Flask(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-MQTT_BROKER = os.getenv("MQTT_BROKER", "ze259613.ala.eu-central-1.emqxsl.com")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 8883))
+MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.emqx.io")
+MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "telto/devices/#")
 MQTT_USER = os.getenv("MQTT_USER")
 MQTT_PASS = os.getenv("MQTT_PASS")
@@ -59,13 +59,14 @@ def on_message(client, userdata, msg):
     print("MQTT:", msg.topic, msg.payload.decode())
     try:
         payload = json.loads(msg.payload.decode())
-        send_message(f"📡 MQTT сообщение
-Топик: {msg.topic}
-Данные: {payload}")
+        send_message(
+            f"📡 MQTT сообщение\n"
+            f"Топик: {msg.topic}\n"
+            f"Данные: {payload}"
+        )
     except Exception as e:
         print("MQTT ERROR:", e)
 
-# MQTT client
 mqtt_client = mqtt.Client()
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
@@ -78,3 +79,4 @@ mqtt_client.loop_start()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
+
