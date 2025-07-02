@@ -40,20 +40,7 @@ def send_message(text):
 from flask import request
 
 @app.route('/data', methods=['POST'])
-def receive_data():
-    print("===== RAW HEADERS =====")
-    print(dict(request.headers))
 
-    print("===== RAW BODY =====")
-    print(request.data.decode('utf-8'))
-
-    print("===== PARSED JSON =====")
-    try:
-        print(request.get_json())
-    except Exception as e:
-        print(f"JSON parsing error: {e}")
-    
-    return 'OK', 200
 
 def data():
     data = request.get_json()
