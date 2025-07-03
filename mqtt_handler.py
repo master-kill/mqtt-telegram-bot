@@ -45,9 +45,9 @@ def on_message(client, userdata, msg):
             "Genset_kWh": "🔢 Сгенерировано ээ",
             "RunningHours": "⏳ Моточасы",
             "Eng_state": "🚦 Состояние",
-            "HTin": "🌡️ Вход в мотор",
+            "HTin": "🌡️ Вход в мотор....",
             "LTin": "🌡️ Вход в микскулер",
-            "ControllerMode": "Режим"
+            "ControllerMode": "🕹️ Режим"
         }
 
         def format_value(key, val):
