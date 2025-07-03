@@ -1,27 +1,32 @@
-
+import os
 import json
 import re
+import requests
 import paho.mqtt.client as mqtt
 from flask import Flask, request, jsonify
-import requests
 
 app = Flask(__name__)
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+# 🛡️ Переменные из Render
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")  # если один пользователь
+MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.emqx.io")
+MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_USER = os.getenv("MQTT_USER")
+MQTT_PASS = os.getenv("MQTT_PASS")
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "telto/devices/#")
+
 API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-subscribers = {
-    "Carlsberg": [5335196591]
-}
-
-def send_message(text, chat_id):
+# 🔐 Telegram уведомление
+def send_message(text, chat_id=CHAT_ID):
     payload = {"chat_id": chat_id, "text": text}
     try:
-        response = requests.post(API_URL, json=payload)
-        print("Telegram response:", response.status_code)
+        requests.post(API_URL, json=payload)
     except Exception as e:
         print("Telegram error:", e)
 
+# 🧠 Разбор Teltonika-пакета
 def parse_teltonika_payload(message_dict):
     if not isinstance(message_dict, dict) or not message_dict:
         return None
@@ -43,44 +48,27 @@ def parse_teltonika_payload(message_dict):
             payload[name] = value
     return {"device_id": key, "timestamp": timestamp, "payload": payload}
 
+# 🔔 Формирование уведомления
 def notify_telegram(data):
     device = data['device_id']
-    payload = data['payload']
-    voltage = payload.get("battery_voltage")
-    warning = payload.get("CommWarning")
-    shutdown = payload.get("CommShutdown")
-    hours = payload.get("RunningHours")
-    state = payload.get("Eng_state")
-    message = f"Устройство: {device}\nНапряжение: {voltage}\nПредупреждение: {warning}\nОтключение: {shutdown}\nМоточасы: {hours}\nСостояние двигателя: {state}"
-    for chat_id in subscribers.get(device, []):
-        send_message(message, chat_id)
+    p = data['payload']
+    message = f"""📡 Устройство: {device}
+🔋 Напряжение: {p.get("battery_voltage")}
+⚠️ Предупреждение: {p.get("CommWarning")}
+⛔ Отключение: {p.get("CommShutdown")}
+🕓 Моточасы: {p.get("RunningHours")}
+🧠 Сост. двигателя: {p.get("Eng_state")}"""
+    send_message(message)
 
+# 📡 MQTT callbacks
 def on_connect(client, userdata, flags, rc):
-    print("Connected with result code", rc)
-    client.subscribe("telto/devices/#")
+    print("MQTT connected with result code", rc)
+    client.subscribe(MQTT_TOPIC)
 
 def on_message(client, userdata, msg):
-    print("MQTT сообщение")
-    print("Топик:", msg.topic)
-    payload = msg.payload.decode()
-    print("Данные:", payload)
+    print("MQTT TOPIC:", msg.topic)
     try:
+        payload = msg.payload.decode()
         raw_data = json.loads(payload)
         data = parse_teltonika_payload(raw_data)
         if data:
-            notify_telegram(data)
-    except Exception as e:
-        print("Ошибка обработки:", e)
-
-mqtt_client = mqtt.Client()
-mqtt_client.on_connect = on_connect
-mqtt_client.on_message = on_message
-mqtt_client.connect("broker.emqx.io", 1883, 60)
-mqtt_client.loop_start()
-
-@app.route("/data", methods=["POST"])
-def receive_data():
-    return jsonify({"status": "ok"})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
