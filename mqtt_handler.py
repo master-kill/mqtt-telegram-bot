@@ -85,65 +85,28 @@ def on_message(client, userdata, msg):
     eng_state_code = int(payload.get("Eng_state", -1))
     controller_mode_code = int(payload.get("ControllerMode", -1))
 
-    msg = f"""
-📡 *Устройство*: `{device_id}`
-⏱️ *Время*: `{formatted_time}`
+    msg_lines = [
+        f"🏭 Устройство: {device_id}",
+        f"⏱️ Время: {timestamp}",
 
-```
-Параметр            Значение
------------------------------
-🔋 Напряжение акб:  {get_scaled('battery_voltage', 10, 1)} В
-⚡️ Нагрузка        {payload.get('GeneratorP')} кВт
-🔢 Счётчик          {payload.get('Genset_kWh')} кВт·ч
-⏳ Наработка        {get_scaled('RunningHours', 10)} ч
-🕹️ Режим            {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}
-🚦 Состояние        {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}
-🌡️ Вход в мотор     {get_scaled('HTin', 10, 1)} °C
-🌡️ Вход в микскулер {get_scaled('LTin', 10, 1)} °C
-⚠️ CommWarning      {payload.get('CommWarning')}
-⛔️ CommShutdown     {payload.get('CommShutdown')}
-🟥 CommBOC          {payload.get('CommBOC')}
-🐢 CommSlowStop     {payload.get('CommSlowStop')}
-🔌 CommMainsProt    {payload.get('CommMainsProt')}
-```
-"""
-    return msg
+        f"🕹️ Режим: {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
+        f"🚦 Состояние: {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
+        
+        f"⚡️ Мощность : {payload.get('GeneratorP')} кВт",
+        f"🔢 Счётчик: {payload.get('Genset_kWh')} кВт·ч",
+        f"⏳ Наработка: {round(payload.get('RunningHours', 0) / 10)} ч",
+        f"🔋 Напряжение акб: {round(payload.get('battery_voltage', 0) / 10, 1)} В",
+        f"🌡️ Вход в мотор: {round(payload.get('HTin', 0) / 10, 1)} °C",
+        f"🌡️ Вход в микскулер: {round(payload.get('LTin', 0) / 10, 1)} °C",
 
-def on_connect(client, userdata, flags, rc):
-    print(f"Connected with result code {rc}")
-    client.subscribe(MQTT_TOPIC)
+        f"⚠️ CommWarning: {payload.get('CommWarning')}",
+        f"⛔️ CommShutdown: {payload.get('CommShutdown')}",
+        f"🟥 CommBOC: {payload.get('CommBOC')}",
+        f"🐢 CommSlowStop: {payload.get('CommSlowStop')}",
+        f"🔌 CommMainsProt: {payload.get('CommMainsProt')}"
+    ]
 
-def on_message(client, userdata, msg):
-    try:
-        print(f"==> MQTT TOPIC: {msg.topic}")
-        payload = json.loads(msg.payload.decode())
-
-        if isinstance(payload, dict):
-            data = next(iter(payload.values()), {})
-            if isinstance(data, str):
-                data = json.loads(data)
-
-            if isinstance(data, dict) and "payload" in data and isinstance(data["payload"], dict):
-                if data["payload"] == {0} or not data["payload"]:
-                    print("==> Пустой payload, сообщение пропущено")
-                    return
-
-                text = format_payload(data.get("device_id", "неизвестно"), data["payload"], int(data.get("timestamp", time.time())))
-                send_message(text)
-            else:
-                print("==> Структура payload некорректна")
-        else:
-            print("==> Получены некорректные данные")
-    except Exception as e:
-        print("MQTT ERROR:", e)
-
-
-
-
-
-
-
-
+    send_message("\n".join(msg_lines))
 
 
 def start_mqtt():
