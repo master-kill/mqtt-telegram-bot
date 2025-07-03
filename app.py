@@ -1,109 +1,86 @@
-import os
-import json
-import time
-import threading
-from flask import Flask, request, jsonify
-import paho.mqtt.client as mqtt
-import requests
 
-# === CONFIG ===
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "your-bot-token"
-CHAT_ID = os.getenv("CHAT_ID") or "your-chat-id"
-MQTT_BROKER = os.getenv("MQTT_BROKER") or "ze259613.ala.eu-central-1.emqxsl.com"
-MQTT_PORT = 8883
-MQTT_TOPIC = "telto/devices/#"
+import json
+import re
+import paho.mqtt.client as mqtt
+from flask import Flask, request, jsonify
+import requests
 
 app = Flask(__name__)
 
-# === TELEGRAM ===
-def send_message(text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+BOT_TOKEN = "YOUR_BOT_TOKEN"
+API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+subscribers = {
+    "Carlsberg": [5335196591]
+}
+
+def send_message(text, chat_id):
+    payload = {"chat_id": chat_id, "text": text}
     try:
-        res = requests.post(url, json={"chat_id": CHAT_ID, "text": text})
-        print("Telegram response:", res.status_code, res.text)
+        response = requests.post(API_URL, json=payload)
+        print("Telegram response:", response.status_code)
     except Exception as e:
         print("Telegram error:", e)
 
-# === UTILS ===
-def parse_maybe_wrapped(payload_str):
-    """Парсит JSON, даже если он обёрнут в строку."""
-    try:
-        data = json.loads(payload_str)
-        if isinstance(data, dict) and len(data) == 1:
-            val = list(data.values())[0]
-            if isinstance(val, str):
-                try:
-                    return json.loads(val)
-                except json.JSONDecodeError:
-                    pass
-        return data
-    except Exception as e:
-        print("❌ JSON parsing failed:", e)
-        return {}
+def parse_teltonika_payload(message_dict):
+    if not isinstance(message_dict, dict) or not message_dict:
+        return None
+    key = list(message_dict.keys())[0]
+    raw_str = message_dict[key]
+    if not isinstance(raw_str, str):
+        return None
+    raw_str = raw_str.strip().strip('"').replace('\n', '')
+    pattern = r'"timestamp":(\d+)-"(\w+)":"?([\d\[\]]+)"?'
+    matches = re.findall(pattern, raw_str)
+    if not matches:
+        return None
+    timestamp = int(matches[0][0])
+    payload = {}
+    for _, name, value in matches:
+        try:
+            payload[name] = int(value.strip('[]'))
+        except ValueError:
+            payload[name] = value
+    return {"device_id": key, "timestamp": timestamp, "payload": payload}
 
-# === MQTT ===
+def notify_telegram(data):
+    device = data['device_id']
+    payload = data['payload']
+    voltage = payload.get("battery_voltage")
+    warning = payload.get("CommWarning")
+    shutdown = payload.get("CommShutdown")
+    hours = payload.get("RunningHours")
+    state = payload.get("Eng_state")
+    message = f"Устройство: {device}\nНапряжение: {voltage}\nПредупреждение: {warning}\nОтключение: {shutdown}\nМоточасы: {hours}\nСостояние двигателя: {state}"
+    for chat_id in subscribers.get(device, []):
+        send_message(message, chat_id)
+
 def on_connect(client, userdata, flags, rc):
-    print("✅ MQTT Connected with result code", rc)
-    client.subscribe(MQTT_TOPIC)
+    print("Connected with result code", rc)
+    client.subscribe("telto/devices/#")
 
 def on_message(client, userdata, msg):
-    raw = msg.payload.decode()
-    print("📡 MQTT сообщение")
+    print("MQTT сообщение")
     print("Топик:", msg.topic)
-    print("Данные:", raw)
+    payload = msg.payload.decode()
+    print("Данные:", payload)
+    try:
+        raw_data = json.loads(payload)
+        data = parse_teltonika_payload(raw_data)
+        if data:
+            notify_telegram(data)
+    except Exception as e:
+        print("Ошибка обработки:", e)
 
-    data = parse_maybe_wrapped(raw)
-    device_id = data.get("device_id", "N/A")
-    payload = data.get("payload", {})
+mqtt_client = mqtt.Client()
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+mqtt_client.connect("broker.emqx.io", 1883, 60)
+mqtt_client.loop_start()
 
-    battery = payload.get("battery_voltage")
-    shutdown = payload.get("CommShutdown")
-    hours = payload.get("RunningHours")
-
-    message = f"📡 Устройство: {device_id}\n🔋 Напряжение: {battery}\n🕓 Моточасы: {hours}"
-
-    if shutdown == 1:
-        message = f"⚠️ Авария на {device_id}!\n" + message
-
-    send_message(message)
-
-def start_mqtt():
-    mqtt_client = mqtt.Client()
-    mqtt_client.tls_set()  # TLS для порта 8883
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
-
-    mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    mqtt_client.loop_forever()
-
-# === HTTP SERVER ===
 @app.route("/data", methods=["POST"])
-def receive_post():
-    raw_data = request.data.decode()
-    print("🌐 POST /data received:", raw_data)
+def receive_data():
+    return jsonify({"status": "ok"})
 
-    data = parse_maybe_wrapped(raw_data)
-    device_id = data.get("device_id", "N/A")
-    payload = data.get("payload", {})
-
-    battery = payload.get("battery_voltage")
-    shutdown = payload.get("CommShutdown")
-    hours = payload.get("RunningHours")
-
-    message = f"📥 POST от {device_id}\n🔋 Напряжение: {battery}\n🕓 Моточасы: {hours}"
-
-    if shutdown == 1:
-        message = f"⚠️ Авария на {device_id}!\n" + message
-
-    send_message(message)
-    return jsonify({"status": "ok", "message": f"Принято от {device_id}"}), 200
-
-# === MAIN ===
 if __name__ == "__main__":
-    mqtt_thread = threading.Thread(target=start_mqtt)
-    mqtt_thread.daemon = True
-    mqtt_thread.start()
-
-    port = int(os.environ.get("PORT", 5000))
-    print(f"🌍 Flask server started on port {port}")
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=8000)
