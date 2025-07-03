@@ -45,30 +45,30 @@ def on_message(client, userdata, msg):
             "Genset_kWh": "🔢 Сгенерировано ээ",
             "RunningHours": "⏳ Моточасы",
             "Eng_state": "🚦 Eng_state",
-            "HTin": "🌡️ HT Вход",
-            "LTin": "🌡️ LT Вход"
+            "HTin": "🌡️ Вход в мотор",
+            "LTin": "🌡️ Вход в микскулер"
         }
 
         def format_value(key, val):
             try:
                 val = float(val)
                 if key == "battery_voltage":
-                    return f"{val / 10:.1f} В"
+                    return f"{val / 10:.1f}В"
                 elif key == "RunningHours":
-                    return f"{int(val / 10)} ч"
+                    return f"{int(val / 10)}ч"
                 elif key in ["HTin", "LTin"]:
-                    return f"{val / 10:.1f} °C"
+                    return f"{val / 10:.1f}°C"
                 elif key == "GeneratorP":
-                    return f"{int(val)} кВт"
+                    return f"{int(val)}кВт"
                 elif key == "Genset_kWh":
-                    return f"{int(val)} кВт·ч"
+                    return f"{int(val)}кВт·ч"
                 else:
                     return str(int(val)) if val.is_integer() else str(val)
             except:
                 return str(val)
 
         lines = [
-            f"<b>📡 {device_id}</b>",
+            f"<b>🏭 {device_id}</b>",
             f"⏱️ {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))}",
             "",
             f"🔧 <b>Показания:</b>"
