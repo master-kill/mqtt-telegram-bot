@@ -45,7 +45,7 @@ def on_message(client, userdata, msg):
         return
 
     # Читаемое время
-if timestamp:
+    if timestamp:
     try:
         tz = timezone(timedelta(hours=3))  # UTC+3
         formatted_time = datetime.fromtimestamp(timestamp, tz).strftime("%d.%m.%Y %H:%M:%S")
