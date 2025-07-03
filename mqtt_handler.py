@@ -89,7 +89,7 @@ def on_message(client, userdata, msg):
         f"🏭 Устройство: {device_id}",
         f"⏱️ Время: {timestamp}",
 
-        f"🕹️ Режим: {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}"
+        f"🕹️ Режим: {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
         f"🚦 Состояние: {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
         
         f"⚡️ Мощность : {payload.get('GeneratorP')} кВт",
@@ -103,7 +103,7 @@ def on_message(client, userdata, msg):
         f"⛔️ CommShutdown: {payload.get('CommShutdown')}",
         f"🟥 CommBOC: {payload.get('CommBOC')}",
         f"🐢 CommSlowStop: {payload.get('CommSlowStop')}",
-        f"🔌 CommMainsProt: {payload.get('CommMainsProt')}",
+        f"🔌 CommMainsProt: {payload.get('CommMainsProt')}"
     ]
 
     send_message("\n".join(msg_lines))
