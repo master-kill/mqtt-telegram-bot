@@ -72,3 +72,26 @@ def on_message(client, userdata, msg):
         raw_data = json.loads(payload)
         data = parse_teltonika_payload(raw_data)
         if data:
+            notify_telegram(data)
+        else:
+            print("⚠️ Could not parse payload.")
+    except Exception as e:
+        print("MQTT ERROR:", e)
+
+# 🔌 Запуск MQTT
+mqtt_client = mqtt.Client()
+if MQTT_USER and MQTT_PASS:
+    mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
+
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+mqtt_client.loop_start()
+
+# 🛠️ Для POST-запросов
+@app.route("/data", methods=["POST"])
+def receive_data():
+    return jsonify({"status": "ok"})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
