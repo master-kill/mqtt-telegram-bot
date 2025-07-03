@@ -29,6 +29,10 @@ def on_message(client, userdata, msg):
         timestamp = payload.get("timestamp", int(time.time()))
         data = payload.get("payload", {})
 
+        if not isinstance(data, dict) or not data:
+    print("⚠️ Пропущено пустое или некорректное сообщение.")
+    return
+
         icon_map = {
             "battery_voltage": "🔋 Напряжение акб",
             "CommWarning": "⚠️ CommWarning",
