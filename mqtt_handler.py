@@ -46,7 +46,8 @@ def on_message(client, userdata, msg):
             "RunningHours": "⏳ Моточасы",
             "Eng_state": "🚦 Состояние",
             "HTin": "🌡️ Вход в мотор",
-            "LTin": "🌡️ Вход в микскулер"
+            "LTin": "🌡️ Вход в микскулер",
+            "ControllerMode": "Режим"
         }
 
         def format_value(key, val):
@@ -65,6 +66,13 @@ def on_message(client, userdata, msg):
                     15: "Нагружается",
                     19: "Прогрев"
                 }
+
+                ControllerMode_map = {
+                    0: "OFF",
+                    1: "Ручной",
+                    2: "АВТО",
+                    3: "Тест"
+                }
                 
                 if key == "battery_voltage":
                     return f"{val / 10:.1f}В"
@@ -77,6 +85,8 @@ def on_message(client, userdata, msg):
                 elif key == "Genset_kWh":
                     return f"{int(val)}кВт·ч"
                 elif key == "Eng_state":
+                    return eng_state_map.get(int(val), f"неизвестно ({int(val)})")
+                elif key == "ControllerMode":
                     return eng_state_map.get(int(val), f"неизвестно ({int(val)})")
                 else:
                     return str(int(val)) if val.is_integer() else str(val)
