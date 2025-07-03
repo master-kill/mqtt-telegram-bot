@@ -44,7 +44,7 @@ def on_message(client, userdata, msg):
             "GeneratorP": "⚡️ Нагрузка P",
             "Genset_kWh": "🔢 Сгенерировано ээ",
             "RunningHours": "⏳ Моточасы",
-            "Eng_state": "🚦 Eng_state",
+            "Eng_state": "🚦 Состояние",
             "HTin": "🌡️ Вход в мотор",
             "LTin": "🌡️ Вход в микскулер"
         }
@@ -76,6 +76,8 @@ def on_message(client, userdata, msg):
                     return f"{int(val)}кВт"
                 elif key == "Genset_kWh":
                     return f"{int(val)}кВт·ч"
+                elif key == "Eng_state":
+            return eng_state_map.get(int(val), f"неизвестно ({int(val)})")
                 else:
                     return str(int(val)) if val.is_integer() else str(val)
             except:
