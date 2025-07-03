@@ -89,15 +89,15 @@ def on_message(client, userdata, msg):
         f"🏭 Устройство: \t{device_id}",
         f"⏱️ Время: \t\t{formatted_time}",
         "",  # <-- Пустая строка
-        f"🕹️ Режим:\t\t\t\t\t\t\t {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
-        f"🚦 Состояние: {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
+        f"🕹️ Режим:\t\t\t\t\t\t\t\t\t {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
+        f"🚦 Состояние: \t{eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
         "",  # <-- Пустая строка        
-        f"⚡️ Нагрузка:\t\t\t\t\t {payload.get('GeneratorP')} кВт",
-        f"🔢 Счётчик:           {payload.get('Genset_kWh')} кВт·ч",
-        f"⏳ Наработка:\t\t\t\t\t {round(payload.get('RunningHours', 0) / 10)} ч",
-        f"🔋 Напряжение акб: {round(payload.get('battery_voltage', 0) / 10, 1)} В",
-        f"🌡️ Вход в мотор:\t\t\t\t\t {round(payload.get('HTin', 0) / 10, 1)} °C",
-        f"🌡️ Вход в микскулер: {round(payload.get('LTin', 0) / 10, 1)} °C",
+        f"⚡️ Нагрузка:\t\t\t\t\t\t\t\t\t {payload.get('GeneratorP')} кВт",
+        f"🔢 Счётчик:\t\t\t\t\t\t\t {payload.get('Genset_kWh')} кВт·ч",
+        f"⏳ Наработка:\t\t\t\t\t\t\t\t {round(payload.get('RunningHours', 0) / 10)} ч",
+        f"🔋 Напряжение акб:\t\t\t {round(payload.get('battery_voltage', 0) / 10, 1)} В",
+        f"🌡️ Вход в мотор:\t\t\t\t\t\t\t\t\t {round(payload.get('HTin', 0) / 10, 1)} °C",
+        f"🌡️ Вход в микскулер:\t\t {round(payload.get('LTin', 0) / 10, 1)} °C",
         "",  # <-- Пустая строка
         f"⚠️ CommWarning: {payload.get('CommWarning')}",
         f"⛔️ CommShutdown: {payload.get('CommShutdown')}",
