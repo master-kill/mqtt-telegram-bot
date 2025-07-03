@@ -7,9 +7,9 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# 🛡️ Переменные из Render
+# Переменные из окружения
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")  # если один пользователь
+CHAT_ID = os.getenv("CHAT_ID")
 MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.emqx.io")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_USER = os.getenv("MQTT_USER")
@@ -18,7 +18,7 @@ MQTT_TOPIC = os.getenv("MQTT_TOPIC", "telto/devices/#")
 
 API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-# 🔐 Telegram уведомление
+# Отправка сообщения в Telegram
 def send_message(text, chat_id=CHAT_ID):
     payload = {"chat_id": chat_id, "text": text}
     try:
@@ -26,7 +26,7 @@ def send_message(text, chat_id=CHAT_ID):
     except Exception as e:
         print("Telegram error:", e)
 
-# 🧠 Разбор Teltonika-пакета
+# Парсинг данных Teltonika
 def parse_teltonika_payload(message_dict):
     if not isinstance(message_dict, dict) or not message_dict:
         return None
@@ -48,19 +48,21 @@ def parse_teltonika_payload(message_dict):
             payload[name] = value
     return {"device_id": key, "timestamp": timestamp, "payload": payload}
 
-# 🔔 Формирование уведомления
+# Уведомление в Telegram
 def notify_telegram(data):
     device = data['device_id']
     p = data['payload']
-    message = f"""📡 Устройство: {device}
-🔋 Напряжение: {p.get("battery_voltage")}
-⚠️ Предупреждение: {p.get("CommWarning")}
-⛔ Отключение: {p.get("CommShutdown")}
-🕓 Моточасы: {p.get("RunningHours")}
-🧠 Сост. двигателя: {p.get("Eng_state")}"""
+    message = (
+        f"📡 Устройство: {device}\n"
+        f"🔋 Напряжение: {p.get('battery_voltage')}\n"
+        f"⚠️ Предупреждение: {p.get('CommWarning')}\n"
+        f"⛔ Отключение: {p.get('CommShutdown')}\n"
+        f"🕓 Моточасы: {p.get('RunningHours')}\n"
+        f"🧠 Двигатель: {p.get('Eng_state')}"
+    )
     send_message(message)
 
-# 📡 MQTT callbacks
+# MQTT
 def on_connect(client, userdata, flags, rc):
     print("MQTT connected with result code", rc)
     client.subscribe(MQTT_TOPIC)
@@ -78,7 +80,7 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print("MQTT ERROR:", e)
 
-# 🔌 Запуск MQTT
+# MQTT init
 mqtt_client = mqtt.Client()
 if MQTT_USER and MQTT_PASS:
     mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
@@ -88,10 +90,16 @@ mqtt_client.on_message = on_message
 mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
 mqtt_client.loop_start()
 
-# 🛠️ Для POST-запросов
+# Корневой маршрут (для Render Health Check или браузера)
+@app.route("/", methods=["GET"])
+def home():
+    return "MQTT-Telegram bridge is running", 200
+
+# POST-запросы (если понадобятся)
 @app.route("/data", methods=["POST"])
 def receive_data():
     return jsonify({"status": "ok"})
 
+# Запуск сервера
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
