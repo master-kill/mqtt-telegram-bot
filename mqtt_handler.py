@@ -20,28 +20,46 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     try:
-        payload = json.loads(msg.payload.decode())
+        raw = msg.payload.decode()
+        print(f"\n==> TOPIC: {msg.topic}")
+        print(f"==> PAYLOAD: {raw}")
+
+        payload = json.loads(raw)
         device_id = payload.get("device_id", "unknown")
         timestamp = payload.get("timestamp", int(time.time()))
         data = payload.get("payload", {})
 
-        voltage = data.get("battery_voltage")
-        alarms = [k for k, v in data.items() if isinstance(v, int) and v > 0 and "Comm" in k]
+        icon_map = {
+            "battery_voltage": "🔋 Напряжение",
+            "CommWarning": "⚠️ CommWarning",
+            "CommShutdown": "⛔ CommShutdown",
+            "CommBOC": "🟥 CommBOC",
+            "CommSlowStop": "🐢 CommSlowStop",
+            "CommMainsProt": "🔌 CommMainsProt",
+            "GeneratorP": "⚡ GeneratorP",
+            "Genset_kWh": "🔢 Genset_kWh",
+            "RunningHours": "⏳ RunningHours",
+            "Eng_state": "🚦 Eng_state",
+            "HTin": "🌡️ HTin",
+            "LTin": "🌡️ LTin"
+        }
 
         lines = [
             f"<b>📡 {device_id}</b>",
             f"⏱️ {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))}",
-            f"🔋 Напряжение: <b>{voltage} В</b>"
+            "",
+            f"🔧 <b>Показания:</b>"
         ]
-        if alarms:
-            lines.append("🚨 <b>Аварии:</b>")
-            for a in alarms:
-                lines.append(f" - {a}")
+
+        for key, value in data.items():
+            label = icon_map.get(key, key)
+            lines.append(f"{label}: <code>{value}</code>")
 
         send_telegram_message('\n'.join(lines))
 
     except Exception as e:
         print(f"❌ MQTT ERROR: {e}")
+
 
 def start_mqtt():
     client = mqtt.Client()
