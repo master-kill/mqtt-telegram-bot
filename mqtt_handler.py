@@ -1,115 +1,129 @@
-import json
 import os
+import json
 import time
 import ssl
 import paho.mqtt.client as mqtt
-from send import send_message
 from datetime import datetime
+from send import send_message
 
-MQTT_BROKER = os.environ.get("MQTT_BROKER")
-MQTT_PORT = int(os.environ.get("MQTT_PORT", 8883))
-MQTT_USER = os.environ.get("MQTT_USER")
-MQTT_PASS = os.environ.get("MQTT_PASS")
-MQTT_TOPIC = os.environ.get("MQTT_TOPIC")
+MQTT_BROKER = os.environ.get('MQTT_BROKER')
+MQTT_PORT = int(os.environ.get('MQTT_PORT', 8883))
+MQTT_USER = os.environ.get('MQTT_USER')
+MQTT_PASS = os.environ.get('MQTT_PASS')
+MQTT_TOPIC = os.environ.get('MQTT_TOPIC')
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+CHAT_ID = os.environ.get('CHAT_ID')
 
-# Словари для состояния двигателя и режима контроллера
-eng_state_map = {
-    1: "Готовность",
-    2: "Не готов",
-    6: "Запуск",
-    7: "В работе",
-    8: "Нагружена",
-    9: "Разгрузка",
-    10: "Расхолаживание",
-    11: "Остановка",
-    15: "Нагружается",
-    19: "Прогрев"
-}
+def format_payload(device_id, payload, timestamp):
+    def get_scaled(key, factor, precision=0):
+        try:
+            value = float(payload.get(key, 0)) / factor
+            return f"{value:.{precision}f}"
+        except Exception:
+            return "н/д"
 
-controller_mode_map = {
-    0: "OFF",
-    1: "Ручной",
-    2: "АВТО",
-    3: "Тест"
-}
+    eng_state_map = {
+        1: "Готовность",
+        2: "Не готов",
+        6: "Запуск",
+        7: "В работе",
+        8: "Нагружена",
+        9: "Разгрузка",
+        10: "Расхолаживание",
+        11: "Остановка",
+        15: "Нагружается",
+        19: "Прогрев"
+    }
 
-
-def format_data(payload: dict, timestamp: int) -> str:
-    dt = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M:%S')
-    msg_lines = [f"🕒 <b>{dt}</b>"]
-
-    def row(icon, label, value, suffix=""):
-        return f"{icon} <b>{label}:</b> {value}{suffix}"
+    controller_mode_map = {
+        0: "OFF",
+        1: "Ручной",
+        2: "АВТО",
+        3: "Тест"
+    }
 
     try:
-        msg_lines.append(row("🔋", "Напряжение", round(payload.get("battery_voltage", 0) / 10, 1), " В"))
-        msg_lines.append(row("⚠️", "CommWarning", payload.get("CommWarning", "N/A")))
-        msg_lines.append(row("⛔️", "CommShutdown", payload.get("CommShutdown", "N/A")))
-        msg_lines.append(row("🟥", "CommBOC", payload.get("CommBOC", "N/A")))
-        msg_lines.append(row("🐢", "CommSlowStop", payload.get("CommSlowStop", "N/A")))
-        msg_lines.append(row("🔌", "CommMainsProt", payload.get("CommMainsProt", "N/A")))
-        msg_lines.append(row("🔋", "GeneratorP", payload.get("GeneratorP", "N/A"), " кВт"))
-        msg_lines.append(row("🔢", "Genset_kWh", payload.get("Genset_kWh", "N/A"), " кВт·ч"))
-        msg_lines.append(row("⏳", "RunningHours", round(payload.get("RunningHours", 0) / 10), " ч"))
+        eng_state_code = int(payload.get("Eng_state", -1))
+        controller_mode_code = int(payload.get("ControllerMode", -1))
+    except Exception:
+        eng_state_code = controller_mode_code = -1
 
-        eng_state = payload.get("Eng_state")
-        msg_lines.append(row("🚦", "Eng_state", eng_state_map.get(eng_state, eng_state)))
+    formatted_time = datetime.fromtimestamp(timestamp).strftime("%d.%m.%Y %H:%M:%S")
 
-        msg_lines.append(row("🌡️", "HTin", round(payload.get("HTin", 0) / 10, 1), " °C"))
-        msg_lines.append(row("🌡️", "LTin", round(payload.get("LTin", 0) / 10, 1), " °C"))
+    msg = f"""
+📡 *Устройство*: `{device_id}`
+⏱️ *Время*: `{formatted_time}`
 
-        controller = payload.get("ControllerMode")
-        msg_lines.append(row("🕹️", "Режим", controller_mode_map.get(controller, controller)))
-
-    except Exception as e:
-        msg_lines.append(f"❌ Ошибка при форматировании данных: {e}")
-
-    return "\n".join(msg_lines)
-
+```
+Параметр            Значение
+-----------------------------
+🔋 Напряжение       {get_scaled('battery_voltage', 10, 1)} В
+⚡️ Мощность         {payload.get('GeneratorP')} кВт
+🔢 Счётчик          {payload.get('Genset_kWh')} кВт·ч
+⏳ Наработка        {get_scaled('RunningHours', 10)} ч
+🚦 Состояние        {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}
+🕹️ Режим            {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}
+🌡️ HTin             {get_scaled('HTin', 10, 1)} °C
+🌡️ LTin             {get_scaled('LTin', 10, 1)} °C
+⚠️ CommWarning      {payload.get('CommWarning')}
+⛔️ CommShutdown     {payload.get('CommShutdown')}
+🟥 CommBOC          {payload.get('CommBOC')}
+🐢 CommSlowStop     {payload.get('CommSlowStop')}
+🔌 CommMainsProt    {payload.get('CommMainsProt')}
+```
+"""
+    return msg
 
 def on_connect(client, userdata, flags, rc):
-    print(f"✅ MQTT подключение: код {rc}")
+    print(f"Connected with result code {rc}")
     client.subscribe(MQTT_TOPIC)
-
 
 def on_message(client, userdata, msg):
     try:
-        payload_str = msg.payload.decode().strip()
-        print(f"\n==> MQTT TOPIC: {msg.topic}")
-        print(f"==> RAW PAYLOAD: {payload_str}")
+        print(f"==> MQTT TOPIC: {msg.topic}")
+        raw = msg.payload.decode()
+        print(f"==> RAW PAYLOAD: {raw}")
+        payload = json.loads(raw)
 
-        if not payload_str:
-            print("⚠️ Пустой payload")
-            return
+        # Если это сразу словарь и есть ключи
+        if isinstance(payload, dict):
+            # Проверка структуры нового формата от Teltonika
+            if "payload" in payload and isinstance(payload["payload"], dict):
+                if not payload["payload"] or payload["payload"] == {0}:
+                    print("==> Пустой payload, сообщение пропущено")
+                    return
 
-        data = json.loads(payload_str)
+                text = format_payload(
+                    device_id=payload.get("device_id", "неизвестно"),
+                    payload=payload["payload"],
+                    timestamp=int(payload.get("timestamp", time.time()))
+                )
+                send_message(text)
+                return
 
-        if not isinstance(data, dict) or "payload" not in data:
-            print("⚠️ Некорректная структура JSON")
-            return
+            # Проверка вложенного объекта (старый формат)
+            data = next(iter(payload.values()), {})
+            if isinstance(data, str):
+                data = json.loads(data)
 
-        device_id = data.get("device_id", "Unknown")
-        timestamp = data.get("timestamp", int(time.time()))
-        payload = data["payload"]
+            if isinstance(data, dict) and "payload" in data:
+                if not data["payload"] or data["payload"] == {0}:
+                    print("==> Пустой payload (вложенный), сообщение пропущено")
+                    return
 
-        if not isinstance(payload, dict) or not payload:
-            print("⚠️ Пустой payload внутри JSON")
-            return
+                text = format_payload(
+                    device_id=data.get("device_id", "неизвестно"),
+                    payload=data["payload"],
+                    timestamp=int(data.get("timestamp", time.time()))
+                )
+                send_message(text)
+                return
 
-        message = f"📡 <b>MQTT сообщение от {device_id}</b>\n\n"
-        message += format_data(payload, timestamp)
-
-        send_message(message)
-
-    except json.JSONDecodeError as e:
-        print(f"❌ MQTT JSON ERROR: {e}")
+        print("==> Получены некорректные или неизвестные данные")
     except Exception as e:
-        print(f"❌ Ошибка обработки MQTT сообщения: {e}")
-
-
+        print("MQTT ERROR:", e)
 def start_mqtt():
     mqtt_client = mqtt.Client()
-
     mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
     mqtt_client.tls_set(cert_reqs=ssl.CERT_NONE)
     mqtt_client.tls_insecure_set(True)
@@ -117,7 +131,5 @@ def start_mqtt():
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
 
-    print(f"🔌 Подключение к брокеру {MQTT_BROKER}:{MQTT_PORT}...")
-    mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
-
+    mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
     mqtt_client.loop_forever()
