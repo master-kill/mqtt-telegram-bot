@@ -50,7 +50,7 @@ def format_payload(device_id, payload, timestamp):
 
     formatted_time = datetime.fromtimestamp(timestamp).strftime("%d.%m.%Y %H:%M:%S")
 
-   msg = f"""
+    msg = f"""
 📡 *Устройство*: `{device_id}`
 ⏱️ *Время*: `{formatted_time}`
 
