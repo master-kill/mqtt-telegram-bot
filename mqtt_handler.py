@@ -50,26 +50,26 @@ def format_payload(device_id, payload, timestamp):
 
     formatted_time = datetime.fromtimestamp(timestamp).strftime("%d.%m.%Y %H:%M:%S")
 
-    msg = f"""
+   msg = f"""
 📡 *Устройство*: `{device_id}`
 ⏱️ *Время*: `{formatted_time}`
 
 ```
-Параметр            Значение
------------------------------
-🔋 Напряжение       {get_scaled('battery_voltage', 10, 1)} В
-⚡️ Мощность         {payload.get('GeneratorP')} кВт
-🔢 Счётчик          {payload.get('Genset_kWh')} кВт·ч
-⏳ Наработка        {get_scaled('RunningHours', 10)} ч
-🚦 Состояние        {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}
-🕹️ Режим            {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}
-🌡️ HTin             {get_scaled('HTin', 10, 1)} °C
-🌡️ LTin             {get_scaled('LTin', 10, 1)} °C
-⚠️ CommWarning      {payload.get('CommWarning')}
-⛔️ CommShutdown     {payload.get('CommShutdown')}
-🟥 CommBOC          {payload.get('CommBOC')}
-🐢 CommSlowStop     {payload.get('CommSlowStop')}
-🔌 CommMainsProt    {payload.get('CommMainsProt')}
+Параметр            | Значение
+--------------------|----------------
+🔋 Напряжение       | {get_scaled('battery_voltage', 10, 1)} В
+⚡️ Мощность         | {payload.get('GeneratorP')} кВт
+🔢 Счётчик          | {payload.get('Genset_kWh')} кВт·ч
+⏳ Наработка        | {get_scaled('RunningHours', 10)} ч
+🚦 Состояние        | {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}
+🕹️ Режим            | {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}
+🌡️ HTin             | {get_scaled('HTin', 10, 1)} °C
+🌡️ LTin             | {get_scaled('LTin', 10, 1)} °C
+⚠️ CommWarning      | {payload.get('CommWarning')}
+⛔️ CommShutdown     | {payload.get('CommShutdown')}
+🟥 CommBOC          | {payload.get('CommBOC')}
+🐢 CommSlowStop     | {payload.get('CommSlowStop')}
+🔌 CommMainsProt    | {payload.get('CommMainsProt')}
 ```
 """
     return msg
