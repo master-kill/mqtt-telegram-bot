@@ -64,7 +64,8 @@ def on_message(client, userdata, msg):
             "RunningHours": "⏳ Моточасы",
             "Eng_state": "🚦 Состояние",
             "HTin": "🌡️ Вход в мотор....",
-            "LTin": "🌡️ Вход в микскулер"
+            "LTin": "🌡️ Вход в микскулер",
+            "ControllerMode": "ControllerMode"
         }
 
         def format_value(key, val):
