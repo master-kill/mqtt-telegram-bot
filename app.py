@@ -6,7 +6,33 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return '✅ MQTT-Telegram bot is running.'
+    return '''
+    <html>
+        <head>
+            <title>MQTT Telegram Bot</title>
+            <style>
+                body {
+                    background-color: #4CAF50; /* зелёный */
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    margin: 0;
+                }
+                h1 {
+                    font-size: 2em;
+                    text-align: center;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>MQTT Telegram Bot is running ✅</h1>
+        </body>
+    </html>
+    '''
+
 
 if __name__ == '__main__':
     threading.Thread(target=start_mqtt, daemon=True).start()
