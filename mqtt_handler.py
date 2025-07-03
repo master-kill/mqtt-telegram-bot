@@ -51,7 +51,26 @@ def on_message(client, userdata, msg):
             formatted_time = str(timestamp)
     else:
         formatted_time = "неизвестно"
+    # Расшифровка состояний
+    eng_state_map = {
+        1: "Готовность",
+        2: "Не готов",
+        6: "Запуск",
+        7: "В работе",
+        8: "Нагружена",
+        9: "Разгрузка",
+        10: "Расхолаживание",
+        11: "Остановка",
+        15: "Нагружается",
+        19: "Прогрев"
+    }
 
+    ControllerMode_map = {
+        0: "OFF",
+        1: "Ручной",
+        2: "АВТО",
+        3: "Тест"
+    }
     # Форматирование и преобразование значений
     def get_scaled(key, scale=1, digits=0):
         try:
@@ -59,6 +78,11 @@ def on_message(client, userdata, msg):
             return round(float(val) / scale, digits) if val is not None else "—"
         except:
             return "—"
+
+
+    eng_state_code = int(payload.get("Eng_state", -1))
+    controller_mode_code = int(payload.get("ControllerMode", -1))
+    
     # Обработка значений
     msg_lines = [
         f"🏭 Устройство: {device_id}",
