@@ -3,7 +3,7 @@ import json
 import ssl
 import paho.mqtt.client as mqtt
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
@@ -45,13 +45,14 @@ def on_message(client, userdata, msg):
         return
 
     # Читаемое время
-    if timestamp:
-        try:
-            formatted_time = datetime.fromtimestamp(timestamp).strftime("%d.%m.%Y %H:%M:%S")
-        except Exception:
-            formatted_time = str(timestamp)
-    else:
-        formatted_time = "неизвестно"
+if timestamp:
+    try:
+        tz = timezone(timedelta(hours=3))  # UTC+3
+        formatted_time = datetime.fromtimestamp(timestamp, tz).strftime("%d.%m.%Y %H:%M:%S")
+    except Exception:
+        formatted_time = str(timestamp)
+else:
+    formatted_time = "неизвестно"
 
     # Расшифровка состояний
     eng_state_map = {
