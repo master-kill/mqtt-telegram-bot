@@ -52,6 +52,20 @@ def on_message(client, userdata, msg):
         def format_value(key, val):
             try:
                 val = float(val)
+
+                eng_state_map = {
+                    1: "Готовность",
+                    2: "Не готов",
+                    6: "Запуск",
+                    7: "В работе",
+                    8: "Нагружена",
+                    9: "Разгрузка",
+                    10: "Расхолаживание",
+                    11: "Остановка",
+                    15: "Нагружается",
+                    19: "Прогрев"
+                }
+                
                 if key == "battery_voltage":
                     return f"{val / 10:.1f}В"
                 elif key == "RunningHours":
