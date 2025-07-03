@@ -88,17 +88,17 @@ def on_message(client, userdata, msg):
     msg_lines = [
         f"🏭 Устройство: {device_id}",
         f"⏱️ Время: {formatted_time}",
-
-        f"🕹️ Режим: {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
+        "",  # <-- Пустая строка
+        f"🕹️ Режим:...... {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
         f"🚦 Состояние: {eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
-        
-        f"⚡️ Нагрузка : {payload.get('GeneratorP')} кВт",
-        f"🔢 Счётчик: {payload.get('Genset_kWh')} кВт·ч",
-        f"⏳ Наработка: {round(payload.get('RunningHours', 0) / 10)} ч",
+        "",  # <-- Пустая строка        
+        f"⚡️ Нагрузка: {payload.get('GeneratorP')} кВт",
+        f"🔢 Счётчик:........ {payload.get('Genset_kWh')} кВт·ч",
+        f"⏳ Наработка:...... {round(payload.get('RunningHours', 0) / 10)} ч",
         f"🔋 Напряжение акб: {round(payload.get('battery_voltage', 0) / 10, 1)} В",
-        f"🌡️ Вход в мотор: {round(payload.get('HTin', 0) / 10, 1)} °C",
+        f"🌡️ Вход в мотор:...... {round(payload.get('HTin', 0) / 10, 1)} °C",
         f"🌡️ Вход в микскулер: {round(payload.get('LTin', 0) / 10, 1)} °C",
-
+        "",  # <-- Пустая строка
         f"⚠️ CommWarning: {payload.get('CommWarning')}",
         f"⛔️ CommShutdown: {payload.get('CommShutdown')}",
         f"🟥 CommBOC: {payload.get('CommBOC')}",
