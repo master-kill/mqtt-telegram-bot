@@ -75,12 +75,18 @@ def on_message(client, userdata, msg):
         print(f"Error formatting message: {e}")
 
 def start_mqtt():
-    mqtt_client = mqtt.Client()
-    mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
+    client = mqtt.Client()
+    if MQTT_USER and MQTT_PASS:
+        client.username_pw_set(MQTT_USER, MQTT_PASS)
+    if MQTT_PORT == 8883:
+        client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS)
+
+    client.on_connect = on_connect
+    client.on_message = on_message
+
     try:
-        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        mqtt_client.loop_forever()
+        print(f"🔌 Connecting to {MQTT_BROKER}:{MQTT_PORT}...")
+        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        client.loop_forever()
     except Exception as e:
-        print(f"MQTT CONNECT ERROR: {e}")
+        print(f"❌ MQTT connect error: {e}")
