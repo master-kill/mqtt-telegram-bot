@@ -3,6 +3,7 @@ import json
 import ssl
 import paho.mqtt.client as mqtt
 import requests
+from datetime import datetime
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
@@ -42,18 +43,33 @@ def on_message(client, userdata, msg):
 
     if not isinstance(payload, dict) or len(payload) < 3:
         return
+    # Читаемое время
+    if timestamp:
+        try:
+            formatted_time = datetime.fromtimestamp(timestamp).strftime("%d.%m.%Y %H:%M:%S")
+        except Exception:
+            formatted_time = str(timestamp)
+    else:
+        formatted_time = "неизвестно"
 
+    # Форматирование и преобразование значений
+    def get_scaled(key, scale=1, digits=0):
+        try:
+            val = payload.get(key)
+            return round(float(val) / scale, digits) if val is not None else "—"
+        except:
+            return "—"
     # Обработка значений
     msg_lines = [
-        f"📡 Устройство: {device_id}",
+        f"🏭 Устройство: {device_id}",
         f"⏱️ Время: {timestamp}",
-        f"⚡️ Генератор: {payload.get('GeneratorP')} кВт",
+        f"⚡️ Мощность : {payload.get('GeneratorP')} кВт",
         f"🔢 Счётчик: {payload.get('Genset_kWh')} кВт·ч",
         f"⏳ Наработка: {round(payload.get('RunningHours', 0) / 10)} ч",
-        f"🔋 Напряжение: {round(payload.get('battery_voltage', 0) / 10, 1)} В",
-        f"🌡️ HTin: {round(payload.get('HTin', 0) / 10, 1)} °C",
-        f"🌡️ LTin: {round(payload.get('LTin', 0) / 10, 1)} °C",
-        f"🚦 Состояние двигателя: {payload.get('Eng_state')}",
+        f"🔋 Напряжение акб: {round(payload.get('battery_voltage', 0) / 10, 1)} В",
+        f"🌡️ Вход в мотор: {round(payload.get('HTin', 0) / 10, 1)} °C",
+        f"🌡️ Вход в микскулер: {round(payload.get('LTin', 0) / 10, 1)} °C",
+        f"🚦 Состояние: {payload.get('Eng_state')}",
         f"🕹️ Режим: {payload.get('ControllerMode')}",
         f"⚠️ CommWarning: {payload.get('CommWarning')}",
         f"⛔️ CommShutdown: {payload.get('CommShutdown')}",
