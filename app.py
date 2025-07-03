@@ -26,26 +26,51 @@ def send_message(text, chat_id=CHAT_ID):
     except Exception as e:
         print("Telegram error:", e)
 
+
 def parse_teltonika_payload(message_dict):
     if not isinstance(message_dict, dict) or not message_dict:
         return None
-    key = list(message_dict.keys())[0]
-    raw_str = message_dict[key]
+
+    device_id = list(message_dict.keys())[0]
+    raw_str = message_dict[device_id]
+
     if not isinstance(raw_str, str):
         return None
+
+    # Удаляем лишние кавычки и пробелы
     raw_str = raw_str.strip().strip('"').replace('\n', '')
-    pattern = r'"timestamp":(\d+)-"(\w+)":"?([\d\[\]]+)"?'
-    matches = re.findall(pattern, raw_str)
-    if not matches:
-        return None
-    timestamp = int(matches[0][0])
+
+    # Разбиваем по -
+    segments = raw_str.split('-')
+
     payload = {}
-    for _, name, value in matches:
-        try:
-            payload[name] = int(value.strip('[]'))
-        except ValueError:
-            payload[name] = value
-    return {"device_id": key, "timestamp": timestamp, "payload": payload}
+    timestamp = None
+
+    for segment in segments:
+        # Разбиваем на ключ и значение
+        parts = segment.split(':', 1)
+        if len(parts) != 2:
+            continue
+        key = parts[0].strip().strip('"')
+        val = parts[1].strip().strip('"')
+
+        if key == "timestamp":
+            timestamp = int(val)
+        else:
+            try:
+                payload[key] = int(val)
+            except ValueError:
+                payload[key] = val
+
+    if not timestamp:
+        return None
+
+    return {
+        "device_id": device_id,
+        "timestamp": timestamp,
+        "payload": payload
+    }
+
 
 def notify_telegram(data):
     device = data['device_id']
