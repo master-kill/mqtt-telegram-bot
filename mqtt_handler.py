@@ -1,6 +1,9 @@
 import os
+import ssl
 import json
+import time
 import paho.mqtt.client as mqtt
+from telegram_bot import send_telegram_message
 
 MQTT_BROKER = os.environ.get('MQTT_BROKER')
 MQTT_PORT = int(os.environ.get('MQTT_PORT', 1883))
