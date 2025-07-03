@@ -30,18 +30,18 @@ def on_message(client, userdata, msg):
         data = payload.get("payload", {})
 
         icon_map = {
-            "battery_voltage": "🔋 Напряжение",
+            "battery_voltage": "🔋 Напряжение акб",
             "CommWarning": "⚠️ CommWarning",
             "CommShutdown": "⛔️ CommShutdown",
             "CommBOC": "🟥 CommBOC",
             "CommSlowStop": "🐢 CommSlowStop",
             "CommMainsProt": "🔌 CommMainsProt",
-            "GeneratorP": "⚡️ GeneratorP",
-            "Genset_kWh": "🔢 Genset_kWh",
-            "RunningHours": "⏳ RunningHours",
+            "GeneratorP": "⚡️ Нагрузка P",
+            "Genset_kWh": "🔢 Сгенерировано ээ",
+            "RunningHours": "⏳ Моточасы",
             "Eng_state": "🚦 Eng_state",
-            "HTin": "🌡️ HTin",
-            "LTin": "🌡️ LTin"
+            "HTin": "🌡️ HT Вход",
+            "LTin": "🌡️ LT Вход"
         }
 
         def format_value(key, val):
