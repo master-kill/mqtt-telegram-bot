@@ -1,7 +1,6 @@
 import os
 import json
 import paho.mqtt.client as mqtt
-from send import send_message
 
 MQTT_BROKER = os.environ.get('MQTT_BROKER')
 MQTT_PORT = int(os.environ.get('MQTT_PORT', 1883))
