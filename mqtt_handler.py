@@ -53,18 +53,18 @@ def on_message(client, userdata, msg):
             return
 
         icon_map = {
-            "battery_voltage": "🔋 Напряжение",
+            "battery_voltage": "🔋 Напряжение акб",
             "CommWarning": "⚠️ CommWarning",
             "CommShutdown": "⛔️ CommShutdown",
             "CommBOC": "🟥 CommBOC",
             "CommSlowStop": "🐢 CommSlowStop",
             "CommMainsProt": "🔌 CommMainsProt",
-            "GeneratorP": "⚡️ GeneratorP",
-            "Genset_kWh": "🔢 Genset_kWh",
-            "RunningHours": "⏳ RunningHours",
+            "GeneratorP": "⚡️ Нагрузка P",
+            "Genset_kWh": "🔢 Сгенерировано э.э.",
+            "RunningHours": "⏳ Моточасы",
             "Eng_state": "🚦 Состояние",
-            "HTin": "🌡️ HTin",
-            "LTin": "🌡️ LTin"
+            "HTin": "🌡️ Вход в мотор....",
+            "LTin": "🌡️ Вход в микскулер"
         }
 
         def format_value(key, val):
