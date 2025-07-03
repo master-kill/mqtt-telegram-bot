@@ -87,7 +87,7 @@ def on_message(client, userdata, msg):
                 elif key == "Eng_state":
                     return eng_state_map.get(int(val), f"неизвестно ({int(val)})")
                 elif key == "ControllerMode":
-                    return eng_state_map.get(int(val), f"неизвестно ({int(val)})")
+                    return ControllerMode_map.get(int(val), f"неизвестно ({int(val)})")
                 else:
                     return str(int(val)) if val.is_integer() else str(val)
             except:
