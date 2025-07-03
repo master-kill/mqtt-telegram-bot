@@ -21,18 +21,18 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         raw = msg.payload.decode()
-        print(f"\n==> TOPIC: {msg.topic}")
-        print(f"==> PAYLOAD: {raw}")
+        print(f"\n==> MQTT TOPIC: {msg.topic}")
+        print(f"==> RAW PAYLOAD: {raw}")
 
-  payload = json.loads(raw)
-device_id = payload.get("device_id", "unknown")
-timestamp = payload.get("timestamp", int(time.time()))
-data = payload.get("payload", {})
+        payload = json.loads(raw)
+        device_id = payload.get("device_id", "unknown")
+        timestamp = payload.get("timestamp", int(time.time()))
+        data = payload.get("payload", {})
 
-# ⛔ Игнорируем, если payload пустой или не словарь
-if not isinstance(data, dict) or not data:
-    print("⚠️ Пропущено пустое или некорректное сообщение.")
-    return
+        # ⛔ Игнорируем пустой или не словарь
+        if not isinstance(data, dict) or not data:
+            print("⚠️ Пропущено пустое или некорректное сообщение.")
+            return
 
         icon_map = {
             "battery_voltage": "🔋 Напряжение акб",
