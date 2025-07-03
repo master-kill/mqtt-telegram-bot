@@ -32,17 +32,35 @@ def on_message(client, userdata, msg):
         icon_map = {
             "battery_voltage": "🔋 Напряжение",
             "CommWarning": "⚠️ CommWarning",
-            "CommShutdown": "⛔ CommShutdown",
+            "CommShutdown": "⛔️ CommShutdown",
             "CommBOC": "🟥 CommBOC",
             "CommSlowStop": "🐢 CommSlowStop",
             "CommMainsProt": "🔌 CommMainsProt",
-            "GeneratorP": "⚡ GeneratorP",
+            "GeneratorP": "⚡️ GeneratorP",
             "Genset_kWh": "🔢 Genset_kWh",
             "RunningHours": "⏳ RunningHours",
             "Eng_state": "🚦 Eng_state",
             "HTin": "🌡️ HTin",
             "LTin": "🌡️ LTin"
         }
+
+        def format_value(key, val):
+            try:
+                val = float(val)
+                if key == "battery_voltage":
+                    return f"{val / 10:.1f} В"
+                elif key == "RunningHours":
+                    return f"{int(val / 10)} ч"
+                elif key in ["HTin", "LTin"]:
+                    return f"{val / 10:.1f} °C"
+                elif key == "GeneratorP":
+                    return f"{int(val)} кВт"
+                elif key == "Genset_kWh":
+                    return f"{int(val)} кВт·ч"
+                else:
+                    return str(int(val)) if val.is_integer() else str(val)
+            except:
+                return str(val)
 
         lines = [
             f"<b>📡 {device_id}</b>",
@@ -53,12 +71,14 @@ def on_message(client, userdata, msg):
 
         for key, value in data.items():
             label = icon_map.get(key, key)
-            lines.append(f"{label}: <code>{value}</code>")
+            formatted = format_value(key, value)
+            lines.append(f"{label}: <code>{formatted}</code>")
 
         send_telegram_message('\n'.join(lines))
 
     except Exception as e:
         print(f"❌ MQTT ERROR: {e}")
+
 
 
 def start_mqtt():
