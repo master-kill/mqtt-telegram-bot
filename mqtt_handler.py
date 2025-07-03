@@ -48,12 +48,12 @@ def on_message(client, userdata, msg):
 
     if timestamp:
         try:
-        tz = timezone(timedelta(hours=3))  # UTC+3
-        formatted_time = datetime.fromtimestamp(timestamp, tz).strftime("%d.%m.%Y %H:%M:%S")
+            tz = timezone(timedelta(hours=3))  # UTC+3
+            formatted_time = datetime.fromtimestamp(timestamp, tz).strftime("%d.%m.%Y %H:%M:%S")
         except Exception:
-        formatted_time = str(timestamp)
+            formatted_time = str(timestamp)
     else:
-    formatted_time = "неизвестно"
+        formatted_time = "неизвестно"
 
     # Расшифровка состояний
     eng_state_map = {
