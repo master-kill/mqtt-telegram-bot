@@ -24,12 +24,13 @@ def on_message(client, userdata, msg):
         print(f"\n==> TOPIC: {msg.topic}")
         print(f"==> PAYLOAD: {raw}")
 
-        payload = json.loads(raw)
-        device_id = payload.get("device_id", "unknown")
-        timestamp = payload.get("timestamp", int(time.time()))
-        data = payload.get("payload", {})
+  payload = json.loads(raw)
+device_id = payload.get("device_id", "unknown")
+timestamp = payload.get("timestamp", int(time.time()))
+data = payload.get("payload", {})
 
-        if not isinstance(data, dict) or not data:
+# ⛔ Игнорируем, если payload пустой или не словарь
+if not isinstance(data, dict) or not data:
     print("⚠️ Пропущено пустое или некорректное сообщение.")
     return
 
