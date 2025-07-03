@@ -77,7 +77,7 @@ def on_message(client, userdata, msg):
                 elif key == "Genset_kWh":
                     return f"{int(val)}кВт·ч"
                 elif key == "Eng_state":
-            return eng_state_map.get(int(val), f"неизвестно ({int(val)})")
+                    return eng_state_map.get(int(val), f"неизвестно ({int(val)})")
                 else:
                     return str(int(val)) if val.is_integer() else str(val)
             except:
