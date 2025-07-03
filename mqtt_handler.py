@@ -45,13 +45,14 @@ def on_message(client, userdata, msg):
         return
 
     # Читаемое время
+
     if timestamp:
-    try:
+        try:
         tz = timezone(timedelta(hours=3))  # UTC+3
         formatted_time = datetime.fromtimestamp(timestamp, tz).strftime("%d.%m.%Y %H:%M:%S")
-    except Exception:
+        except Exception:
         formatted_time = str(timestamp)
-else:
+    else:
     formatted_time = "неизвестно"
 
     # Расшифровка состояний
