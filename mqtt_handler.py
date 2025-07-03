@@ -4,7 +4,7 @@ import time
 import ssl
 import paho.mqtt.client as mqtt
 from datetime import datetime
-#from send import send_message
+from send import send_message
 
 MQTT_BROKER = os.environ.get('MQTT_BROKER')
 MQTT_PORT = int(os.environ.get('MQTT_PORT', 8883))
