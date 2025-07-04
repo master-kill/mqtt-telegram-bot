@@ -57,11 +57,11 @@ def on_message(client, userdata, msg):
 
     # Расшифровка состояний
     eng_state_map = {
-        1: "Готовность",
+        1: "Готов",
         2: "Не готов",
         6: "Запуск",
         7: "В работе",
-        8: "Нагружена",
+        8: "Нагружен",
         9: "Разгрузка",
         10: "Расхолаживание",
         11: "Остановка",
@@ -88,14 +88,14 @@ def on_message(client, userdata, msg):
     controller_mode_code = int(payload.get("ControllerMode", -1))
 
     msg_lines = [
-        f"🏭 Устройство: \t{device_id}",
+        f"🏭 Объект: \t{device_id}",
         f"⏱️ Время: \t\t{formatted_time}",
         "",  # <-- Пустая строка
         f"🕹️ Режим:\t\t\t\t\t\t\t\t\t\t\t {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
         f"🚦 Состояние: \t{eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
         "",  # <-- Пустая строка        
         f"⚡️ Нагрузка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {payload.get('GeneratorP')} кВт",
-        f"🔢 Счётчик:\t\t\t\t\t\t\t {payload.get('Genset_kWh')} кВт·ч",
+        f"🔢 Счётчик:\t\t\t\t\t\t\t\t\t\t\t\t {payload.get('Genset_kWh')} кВт·ч",
         f"⏳ Наработка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('RunningHours', 0) / 10)} ч",
         f"🔋 Напряжение акб:\t\t\t\t {round(payload.get('battery_voltage', 0) / 10, 1)} В",
         f"🌡️ Вход в мотор:\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('HTin', 0) / 10, 1)} °C",
