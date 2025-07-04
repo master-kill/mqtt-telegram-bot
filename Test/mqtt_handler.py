@@ -49,7 +49,13 @@ def on_message(client, userdata, msg):
 
     text = format_message(device_id, timestamp, payload)
 #    send_message(text)
-    set_latest_data(device_id, timestamp, payload)
+#    set_latest_data(device_id, timestamp, payload)
+data = {
+    "device_id": device_id,
+    "timestamp": timestamp,
+    "payload": payload
+}
+set_latest_data(data)
 
 def start_mqtt():
     client = mqtt.Client()
