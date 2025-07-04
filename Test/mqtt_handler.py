@@ -45,17 +45,16 @@ def on_message(client, userdata, msg):
     if not isinstance(payload, dict) or len(payload) < 3:
         return
         
-    set_latest_data(data)
-
-    text = format_message(device_id, timestamp, payload)
-#    send_message(text)
-#    set_latest_data(device_id, timestamp, payload)
-data = {
+    set_latest_data({
     "device_id": device_id,
     "timestamp": timestamp,
     "payload": payload
-}
-set_latest_data(data)
+    })
+
+    text = format_message(device_id, timestamp, payload)
+    send_message(text)
+    set_latest_data(device_id, timestamp, payload)
+
 
 def start_mqtt():
     client = mqtt.Client()
