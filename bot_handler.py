@@ -1,28 +1,25 @@
 import os
-from mqtt_handler import latest_status
-from telegram import Bot
 from telegram.ext import Updater, CommandHandler
-from mqtt_handler import last_status
+from send import format_payload
+from shared_data import latest_data
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-bot = Bot(token=BOT_TOKEN)
 
-@bot.message_handler(commands=['status'])
-def status_handler(message):
-    if last_status:
-        bot.send_message(message.chat.id, last_status, parse_mode="Markdown")
+def status(update, context):
+    if not latest_data:
+        update.message.reply_text("⚠️ Данных ещё нет.")
     else:
-        bot.send_message(message.chat.id, "⚠️ Данных ещё нет.")
-
-
-def status_command(update, context):
-    if latest_status:
-        context.bot.send_message(chat_id=update.effective_chat.id, text=latest_status, parse_mode='Markdown')
-    else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="⚠️ Данных ещё нет.")
+        text = format_payload(
+            latest_data.get("device_id", "неизвестно"),
+            latest_data.get("payload", {}),
+            latest_data.get("timestamp", 0)
+        )
+        update.message.reply_text(text)
 
 def start_bot():
-    updater = Updater(BOT_TOKEN)
+    updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler("status", status_command))
+    dp.add_handler(CommandHandler("status", status))
     updater.start_polling()
+    updater.idle()
+
