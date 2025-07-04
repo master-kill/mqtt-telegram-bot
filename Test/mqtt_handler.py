@@ -5,6 +5,8 @@ import paho.mqtt.client as mqtt
 import requests
 from formatter import format_message
 from bot_handler import set_latest_data
+from data_store import set_latest_data
+
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
