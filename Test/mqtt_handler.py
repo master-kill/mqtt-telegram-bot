@@ -18,7 +18,7 @@ MQTT_TOPIC = os.environ.get("MQTT_TOPIC")
 #    if BOT_TOKEN and CHAT_ID:
 #        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 #        requests.post(url, json={"chat_id": CHAT_ID, "text": text})
-set_latest_data(data)
+set_latest_data()
 
 def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT Broker:", rc)
