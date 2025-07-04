@@ -14,10 +14,11 @@ MQTT_USER = os.environ.get("MQTT_USER")
 MQTT_PASS = os.environ.get("MQTT_PASS")
 MQTT_TOPIC = os.environ.get("MQTT_TOPIC")
 
-def send_message(text):
-    if BOT_TOKEN and CHAT_ID:
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        requests.post(url, json={"chat_id": CHAT_ID, "text": text})
+#def send_message(text):
+#    if BOT_TOKEN and CHAT_ID:
+#        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+#        requests.post(url, json={"chat_id": CHAT_ID, "text": text})
+set_latest_data(data)
 
 def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT Broker:", rc)
