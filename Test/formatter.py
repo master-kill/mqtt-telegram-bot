@@ -47,7 +47,7 @@ def format_message(device_id, timestamp, payload):
         f"🏭 Объект: \t{device_id}",
         f"⏱️ Время: \t\t{formatted_time}",
         "",  # <-- Пустая строка
-        f"🕹️ Режим:\t\t\t\t\t\t\t\t\t\t\t {controllermode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
+        f"🕹️ Режим:\t\t\t\t\t\t\t\t\t\t\t {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
         f"🚦 Состояние: \t{eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
         "",  # <-- Пустая строка        
         f"⚡️ Нагрузка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {payload.get('GeneratorP')} кВт",
