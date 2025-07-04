@@ -1,7 +1,7 @@
 import os
 from telegram import Bot, Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackContext
-from send import format_message
+from formatter import format_message
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
