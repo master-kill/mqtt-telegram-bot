@@ -1,7 +1,6 @@
 from flask import Flask
 import threading
 from mqtt_handler import start_mqtt
-from bot_handler import start_bot
 
 app = Flask(__name__)
 
@@ -37,5 +36,4 @@ def index():
 
 if __name__ == '__main__':
     threading.Thread(target=start_mqtt, daemon=True).start()
-    threading.Thread(target=start_bot, daemon=True).start()
     app.run(host='0.0.0.0', port=10000)
