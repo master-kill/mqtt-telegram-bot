@@ -1,6 +1,6 @@
 import os
 from telegram.ext import Updater, CommandHandler
-from send import format_payload
+from send import format_payload, format_payload
 from shared_data import latest_data
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -22,4 +22,3 @@ def start_bot():
     dp.add_handler(CommandHandler("status", status))
     updater.start_polling()
     updater.idle()
-
