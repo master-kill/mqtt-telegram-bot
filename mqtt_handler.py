@@ -1,3 +1,7 @@
+# В начале файла
+last_eng_state = None
+last_controller_mode = None
+latest_status = None  # для команды /status
 import os
 import json
 import ssl
