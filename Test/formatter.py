@@ -46,17 +46,17 @@ def format_message(device_id, timestamp, payload):
     msg_lines = [
         f"🏭 Объект: \t{device_id}",
         f"⏱️ Время: \t\t{formatted_time}",
-        "",  # Пустая строка
-        f"🕹️ Режим:\t\t {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
-        f"🚦 Состояние: \t{eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",
-        "",
-        f"⚡️ Нагрузка:\t\t {payload.get('GeneratorP')} кВт",
-        f"🔢 Счётчик:\t\t {payload.get('Genset_kWh')} кВт·ч",
-        f"⏳ Наработка:\t {round(payload.get('RunningHours', 0) / 10)} ч",
-        f"🔋 Напряжение акб:\t {get_scaled('battery_voltage', 10, 1)} В",
-        f"🌡️ Вход в мотор:\t {get_scaled('HTin', 10, 1)} °C",
-        f"🌡️ Вход в микскулер:\t {get_scaled('LTin', 10, 1)} °C",
-        "",
+        "",  # <-- Пустая строка
+        f"🕹️ Режим:\t\t\t\t\t\t\t\t\t\t\t {ControllerMode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
+        f"🚦 Состояние: \t{eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
+        "",  # <-- Пустая строка        
+        f"⚡️ Нагрузка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {payload.get('GeneratorP')} кВт",
+        f"🔢 Счётчик:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {payload.get('Genset_kWh')} кВт·ч",
+        f"⏳ Наработка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('RunningHours', 0) / 10)} ч",
+        f"🔋 Напряжение акб:\t\t\t\t {round(payload.get('battery_voltage', 0) / 10, 1)} В",
+        f"🌡️ Вход в мотор:\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('HTin', 0) / 10, 1)} °C",
+        f"🌡️ Вход в микскулер:\t\t {round(payload.get('LTin', 0) / 10, 1)} °C",
+        "",  # <-- Пустая строка
         f"⚠️ CommWarning: {payload.get('CommWarning')}",
         f"⛔️ CommShutdown: {payload.get('CommShutdown')}",
         f"🟥 CommBOC: {payload.get('CommBOC')}",
