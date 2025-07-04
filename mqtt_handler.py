@@ -4,6 +4,7 @@ import ssl
 import paho.mqtt.client as mqtt
 import requests
 from datetime import datetime, timezone, timedelta
+from shared_data import latest_data
 
 # Переменные окружения
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -89,7 +90,9 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     global last_eng_state, last_controller_mode, latest_status
-
+    latest_data.clear()
+    latest_data.update(data)
+    
     print(f"==> MQTT TOPIC: {msg.topic}")
     print(f"==> RAW PAYLOAD: {msg.payload.decode()}")
 
@@ -124,6 +127,7 @@ def on_message(client, userdata, msg):
     if valid_payload:  # если данные прошли все проверки
         last_status = text  # сохраняем отформатированное сообщение
         send_message(text)
+        
 
 def start_mqtt():
     client = mqtt.Client()
