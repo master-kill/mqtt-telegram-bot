@@ -6,7 +6,6 @@ import threading
 import paho.mqtt.client as mqtt
 from datetime import datetime
 from formatter import format_message
-from bot_handler import set_latest_data
 from data_store import set_latest_data
 
 
