@@ -15,6 +15,9 @@ MQTT_USER = os.environ.get('MQTT_USER')
 MQTT_PASS = os.environ.get('MQTT_PASS')
 MQTT_TOPIC = os.environ.get('MQTT_TOPIC')
 
+def send_message(text):
+    bot.send_message(chat_id=CHAT_ID, text=text, parse_mode='Markdown')
+
 def on_connect(client, userdata, flags, rc):
     print(f"Connected with result code {rc}")
     client.subscribe(MQTT_TOPIC)
