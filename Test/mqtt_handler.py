@@ -1,64 +1,81 @@
 import os
 import json
 import ssl
+import time
+import threading
+from datetime import datetime
 import paho.mqtt.client as mqtt
-import requests
+
 from formatter import format_message
-from bot_handler import set_latest_data
-from data_store import set_latest_data
+from bot_handler import send_message, set_latest_data
 
-
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
+# Конфигурация MQTT из переменных среды
 MQTT_BROKER = os.environ.get("MQTT_BROKER")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", 8883))
+MQTT_TOPIC = os.environ.get("MQTT_TOPIC")
 MQTT_USER = os.environ.get("MQTT_USER")
 MQTT_PASS = os.environ.get("MQTT_PASS")
-MQTT_TOPIC = os.environ.get("MQTT_TOPIC")
 
-#def send_message(text):
-#    if BOT_TOKEN and CHAT_ID:
-#        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-#        requests.post(url, json={"chat_id": CHAT_ID, "text": text})
+last_state = {}
 
 def on_connect(client, userdata, flags, rc):
-    print("✅ Connected to MQTT Broker:", rc)
+    print(f"[MQTT] Подключение: {rc}")
     client.subscribe(MQTT_TOPIC)
 
 def on_message(client, userdata, msg):
-    print(f"==> MQTT TOPIC: {msg.topic}")
-    print(f"==> RAW PAYLOAD: {msg.payload.decode()}")
-
     try:
-        data = json.loads(msg.payload.decode())
+        print(f"==> MQTT TOPIC: {msg.topic}")
+        payload = json.loads(msg.payload.decode())
+
+        if not isinstance(payload, dict) or not payload:
+            print("==> Пустой или некорректный payload, сообщение проигнорировано")
+            return
+
+        data = next(iter(payload.values()), {})
+        if isinstance(data, str):
+            data = json.loads(data)
+
+        if not isinstance(data, dict) or not data.get("payload"):
+            print("==> Payload отсутствует или некорректен")
+            return
+
+        device_id = data.get("device_id", "неизвестно")
+        timestamp = int(data.get("timestamp", time.time()))
+        payload_data = data["payload"]
+
+        # Сохраняем последние данные
+        set_latest_data({
+            "device_id": device_id,
+            "timestamp": timestamp,
+            "payload": payload_data
+        })
+
+        # Проверка на изменение состояния
+        eng_state = payload_data.get("Eng_state")
+        controller_mode = payload_data.get("ControllerMode")
+
+        changed = False
+        if eng_state is not None:
+            if last_state.get("Eng_state") != eng_state:
+                changed = True
+                last_state["Eng_state"] = eng_state
+
+        if controller_mode is not None:
+            if last_state.get("ControllerMode") != controller_mode:
+                changed = True
+                last_state["ControllerMode"] = controller_mode
+
+        if changed:
+            text = format_message(device_id, timestamp, payload_data)
+            send_message(text)
+
     except Exception as e:
-        print(f"MQTT ERROR: {e}")
-        return
-
-    if not isinstance(data, dict):
-        return
-
-    device_id = data.get("device_id", "unknown")
-    timestamp = data.get("timestamp")
-    payload = data.get("payload", {})
-
-    if not isinstance(payload, dict) or len(payload) < 3:
-        return
-        
-    set_latest_data({
-    "device_id": device_id,
-    "timestamp": timestamp,
-    "payload": payload
-    })
-
-    text = format_message(device_id, timestamp, payload)
-    send_message(text)
-    set_latest_data(device_id, timestamp, payload)
-
+        print("MQTT ERROR:", e)
 
 def start_mqtt():
     client = mqtt.Client()
     client.username_pw_set(MQTT_USER, MQTT_PASS)
+
     client.tls_set(cert_reqs=ssl.CERT_NONE)
     client.tls_insecure_set(True)
 
@@ -66,4 +83,5 @@ def start_mqtt():
     client.on_message = on_message
 
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    print("[MQTT] Подключение установлено, ожидание сообщений...")
     client.loop_forever()
