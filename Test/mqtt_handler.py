@@ -48,7 +48,7 @@ def on_message(client, userdata, msg):
     set_latest_data(data)
 
     text = format_message(device_id, timestamp, payload)
-    send_message(text)
+#    send_message(text)
     set_latest_data(device_id, timestamp, payload)
 
 def start_mqtt():
