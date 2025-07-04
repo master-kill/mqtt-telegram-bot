@@ -18,6 +18,7 @@ MQTT_TOPIC = os.environ.get("MQTT_TOPIC")
 last_eng_state = None
 last_controller_mode = None
 latest_status = None
+last_status = None
 
 
 def send_message(text):
@@ -119,7 +120,10 @@ def on_message(client, userdata, msg):
         last_eng_state = eng_state
         last_controller_mode = controller_mode
         send_message(text)
-
+        
+    if valid_payload:  # если данные прошли все проверки
+        last_status = text  # сохраняем отформатированное сообщение
+        send_message(text)
 
 def start_mqtt():
     client = mqtt.Client()
