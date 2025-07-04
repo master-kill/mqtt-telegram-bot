@@ -7,6 +7,8 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 from formatter import format_message
 from bot_handler import set_latest_data
+from data_store import set_latest_data
+
 
 MQTT_BROKER = os.environ.get('MQTT_BROKER')
 MQTT_PORT = int(os.environ.get('MQTT_PORT', 8883))
