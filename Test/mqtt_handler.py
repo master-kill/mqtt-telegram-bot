@@ -4,6 +4,7 @@ import ssl
 import paho.mqtt.client as mqtt
 import requests
 from formatter import format_message
+from bot_handler import set_latest_data
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
@@ -44,6 +45,7 @@ def on_message(client, userdata, msg):
 
     text = format_message(device_id, timestamp, payload)
     send_message(text)
+    set_latest_data(device_id, timestamp, payload)
 
 def start_mqtt():
     client = mqtt.Client()
