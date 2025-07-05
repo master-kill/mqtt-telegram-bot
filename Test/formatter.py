@@ -41,7 +41,7 @@ def format_message(device_id, timestamp, payload):
             return "—"
 
     eng_state_code = int(payload.get("Eng_state", -1))
-   # controller_mode_code = int(payload.get("ControllerMode", -1))
+    controller_mode_code = int(payload.get("ControllerMode", -1))
 
     msg_lines = [
         f"🏭 Объект: \t{device_id}",
