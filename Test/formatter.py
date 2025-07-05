@@ -47,7 +47,7 @@ def format_message(device_id, timestamp, payload):
         f"🏭 Объект: \t{device_id}",
         f"⏱️ Время: \t\t{formatted_time}",
         "",  # <-- Пустая строка
-        f"🕹️ Режим:\t\t\t\t\t\t\t\t\t\t {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
+        f"🕹️ Режим:\t\t\t\t\t\t\t\t\t {controller_mode_map.get(controller_mode_code, f'код {controller_mode_code}')}",
         f"🚦 Состояние: \t{eng_state_map.get(eng_state_code, f'код {eng_state_code}')}",      
         "",  # <-- Пустая строка        
         f"⚡️ Нагрузка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {payload.get('GeneratorP')} кВт",
@@ -55,19 +55,19 @@ def format_message(device_id, timestamp, payload):
         f"⏳ Наработка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('RunningHours', 0) / 10)} ч",
         f"🔋 Напряжение акб:\t\t\t\t {round(payload.get('battery_voltage', 0) / 10, 1)} В",
         "",  # <-- Пустая строка
-        f"🌡️ Вход HT: {round(payload.get('T_CoolantIn', 0) / 10, 1)} °C",
-        f"🌡️ Вход LT: {round(payload.get('LT_eng_in', 0) / 10, 1)} °C",
-        f"🌡️ После TKLT: {round(payload.get('LTafterTKLT', 0) / 10, 1)} °C",
-        f"🌡️ После TKHT: {round(payload.get('HTafterTKHT', 0) / 10, 1)} °C",
-        f"🌡️ Подшипник DE: {round(payload.get('T_BearingDE', 0) / 10, 1)} °C",
-        f"🌡️ Подшипник NDE: {round(payload.get('T_BearingNDE', 0) / 10, 1)} °C",
-        f"🌡️ Воздух на впуске: {round(payload.get('T_IntakeAirA', 0) / 10, 1)} °C",
-        f"🌡️ Вход GenRoom: {round(payload.get('GenRoomInT', 0) / 10, 1)} °C",
-        f"🌡️ Выход GenRoom: {round(payload.get('GenRoomOutT', 0) / 10, 1)} °C",
+        f"🌡️ Вход HT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('T_CoolantIn', 0) / 10, 1)} °C",
+        f"🌡️ Вход LT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('LT_eng_in', 0) / 10, 1)} °C",
+        f"🌡️ После TKLT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('LTafterTKLT', 0) / 10, 1)} °C",
+        f"🌡️ После TKHT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('HTafterTKHT', 0) / 10, 1)} °C",
+        f"🌡️ Подшипник DE:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('T_BearingDE', 0) / 10, 1)} °C",
+        f"🌡️ Подшипник NDE:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('T_BearingNDE', 0) / 10, 1)} °C",
+        f"🌡️ Воздух на впуске:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('T_IntakeAirA', 0) / 10, 1)} °C",
+        f"🌡️ Вход GenRoom:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('GenRoomInT', 0) / 10, 1)} °C",
+        f"🌡️ Выход GenRoom:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('GenRoomOutT', 0) / 10, 1)} °C",
 
         f"🧯 Давл. масла: {payload.get('P_Oil')} Bar",
         f"🧯 Давл. Картер: {payload.get('P_Crankcase')} mBar",
-        f"💧 Перепад HT: {payload.get('P_CoolantDiff')} Bar",
+        f"💧 Перепад HT: {round(payload.get('P_CoolantDiff', 0) / 100, 1)} Bar",
         f"🛢️ Доливов масла: {payload.get('OilRefilCounter')}",
         
 
