@@ -66,7 +66,7 @@ def on_message(client, userdata, msg):
 
         if eng_state != last_eng_state or controller_mode != last_controller_mode:
             last_eng_state = eng_state
-            last_controller_mode = controller_mode
+ #           last_controller_mode = controller_mode
             text = format_message(device_id, timestamp, payload)
             send_message(text)
         else:
