@@ -36,7 +36,7 @@ def on_message(client, userdata, msg):
         if not isinstance(payload, dict) or "payload" not in payload:
             return
 
-        if payload["payload"] == "nodata " or not isinstance(payload["payload"], dict):
+        if payload["payload"] == "nodata" or not isinstance(payload["payload"], dict):
             return
 
         device_id = payload.get("device_id", "unknown")
