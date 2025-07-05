@@ -27,46 +27,48 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(MQTT_TOPIC)
 
 def on_message(client, userdata, msg):
-    global last_eng_state, last_controller_mode
-
     try:
+        print(f"\n📥 [MQTT] TOPIC: {msg.topic}")
         payload = json.loads(msg.payload.decode())
 
-        # Ignore empty or invalid messages
-        if not isinstance(payload, dict) or "payload" not in payload:
-            return
-
-        if payload["payload"] == "nodata" or not isinstance(payload["payload"], dict):
+        if not isinstance(payload, dict):
+            print("❌ MQTT: Payload is not a dict")
             return
 
         device_id = payload.get("device_id", "unknown")
         timestamp = payload.get("timestamp", int(time.time()))
-        data = payload["payload"]
+        data = payload.get("payload", {})
 
-        # Update latest data for /status
+        if not isinstance(data, dict) or "nodata" in str(data).lower() or not data:
+            print("⚠️ MQTT: Message ignored (empty or invalid payload)")
+            return
+
+        # Отладка: покажем содержимое
+        print(f"✅ MQTT: Data received from {device_id} at {timestamp}")
+        print(f"📦 PAYLOAD: {json.dumps(data, indent=2)}")
+
+        # Обновляем состояние
         set_latest_data({
             "device_id": device_id,
             "timestamp": timestamp,
             "payload": data
         })
 
+        # Проверка на изменение состояния
+        global last_eng_state
         eng_state = data.get("Eng_state")
-        controller_mode = data.get("ControllerMode")
 
-        # Send message only on important eng_state transitions
         if eng_state in [2, 6, 7, 11] and eng_state != last_eng_state:
+            print(f"📡 Eng_state changed: {last_eng_state} → {eng_state}")
             last_eng_state = eng_state
             text = format_message(device_id, timestamp, data)
             send_message(text)
 
-        # Optional: react to ControllerMode change
-        # if controller_mode != last_controller_mode:
-        #     last_controller_mode = controller_mode
-        #     text = format_message(device_id, timestamp, data)
-        #     send_message(text)
-
+    except json.JSONDecodeError as e:
+        print(f"❌ MQTT JSON ERROR: {e}")
     except Exception as e:
-        print("❌ MQTT ERROR:", e)
+        print(f"🔥 MQTT ERROR: {e}")
+
 
 def start_mqtt():
     client = mqtt.Client()
