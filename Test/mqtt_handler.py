@@ -50,7 +50,7 @@ def on_message(client, userdata, msg):
 
         # Игнорируем "nodata" сообщения без логов
         if not isinstance(payload, dict) or not payload or "nodata" in str(payload).lower():
-        return
+            return
 
 
         # Сохраняем в хранилище
