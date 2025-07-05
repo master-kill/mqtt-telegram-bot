@@ -54,8 +54,23 @@ def format_message(device_id, timestamp, payload):
         f"🔢 Счётчик:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {payload.get('Genset_kWh')} кВт·ч",
         f"⏳ Наработка:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('RunningHours', 0) / 10)} ч",
         f"🔋 Напряжение акб:\t\t\t\t {round(payload.get('battery_voltage', 0) / 10, 1)} В",
-        f"🌡️ Вход в мотор:\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('HTin', 0) / 10, 1)} °C",
-        f"🌡️ Вход в микскулер:\t\t {round(payload.get('LTin', 0) / 10, 1)} °C",
+        "",  # <-- Пустая строка
+        f"🌡️ Вход HT: {round(payload.get('T_CoolantIn', 0) / 10, 1)} °C",
+        f"🌡️ Вход LT: {round(payload.get('LT_eng_in', 0) / 10, 1)} °C",
+        f"🌡️ После TKLT: {round(payload.get('LTafterTKLT', 0) / 10, 1)} °C",
+        f"🌡️ После TKHT: {round(payload.get('HTafterTKHT', 0) / 10, 1)} °C",
+        f"🌡️ Подшипник DE: {round(payload.get('T_BearingDE', 0) / 10, 1)} °C",
+        f"🌡️ Подшипник NDE: {round(payload.get('T_BearingNDE', 0) / 10, 1)} °C",
+        f"🌡️ Воздух на впуске: {round(payload.get('T_IntakeAirA', 0) / 10, 1)} °C",
+        f"🌡️ Вход GenRoom: {round(payload.get('GenRoomInT', 0) / 10, 1)} °C",
+        f"🌡️ Выход GenRoom: {round(payload.get('GenRoomOutT', 0) / 10, 1)} °C",
+
+        f"🧯 Давл. масла: {payload.get('P_Oil')} Bar",
+        f"🧯 Давл. Картер: {payload.get('P_Crankcase')} mBar",
+        f"💧 Перепад HT: {payload.get('P_CoolantDiff')} Bar",
+        f"🛢️ Доливов масла: {payload.get('OilRefilCounter')}",
+        
+
         "",  # <-- Пустая строка
         f"⚠️ CommWarning:\t\t\t\t\t\t {payload.get('CommWarning')}",
         f"⛔️ CommShutdown:\t\t {payload.get('CommShutdown')}",
