@@ -57,8 +57,8 @@ def format_message(device_id, timestamp, payload):
         "",  # <-- Пустая строка
         f"🌡️ Вход HT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('T_CoolantIn', 0) / 10, 1)} °C",
         f"🌡️ Вход LT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('LT_eng_in', 0) / 10, 1)} °C",
-        f"🌡️ После TKLT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('LTafterTKLT', 0) / 10, 1)} °C",
         f"🌡️ После TKHT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('HTafterTKHT', 0) / 10, 1)} °C",
+        f"🌡️ После TKLT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('LTafterTKLT', 0) / 10, 1)} °C",
         f"🌡️ Подшипник DE:\t\t\t\t\t\t\t\t {round(payload.get('T_BearingDE', 0) / 10, 1)} °C",
         f"🌡️ Подшипник NDE:\t\t\t\t\t {round(payload.get('T_BearingNDE', 0) / 10, 1)} °C",
         f"🌡️ Воздух на впуске:\t\t\t\t\t {round(payload.get('T_IntakeAirA', 0) / 10, 1)} °C",
