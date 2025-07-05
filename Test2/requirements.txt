@@ -1,0 +1,4 @@
+flask
+requests
+paho-mqtt
+python-telegram-bot==13.15
