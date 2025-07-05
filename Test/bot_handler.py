@@ -21,6 +21,7 @@ def status(update: Update, context: CallbackContext):
         update.message.reply_text("⚠️ Данных ещё нет.")
 
 def start_bot():
+    bot.delete_webhook()
     updater = Updater(token=BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("status", status))
