@@ -2,6 +2,7 @@ import os
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from formatter import format_message
+from data_store import get_latest_data
 
 # Telegram config
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -44,10 +45,19 @@ def status(update: Update, context: CallbackContext):
         update.message.reply_text("⛔️ Вы не подписаны. Используйте /start.")
         return
 
-    if not latest_data:
+#    if not latest_data:
+#        update.message.reply_text("⚠️ Данных ещё нет.")
+#        return
+    data = get_latest_data()
+    if not data:
         update.message.reply_text("⚠️ Данных ещё нет.")
         return
 
+# иначе:
+    text = format_message(data["device_id"], data["timestamp"], data["payload"])
+    update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    
     device_id = latest_data.get("device_id", "неизвестно")
     timestamp = latest_data.get("timestamp")
     payload = latest_data.get("payload", {})
