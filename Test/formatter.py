@@ -57,11 +57,11 @@ def format_message(device_id, timestamp, payload):
         f"🌡️ Вход в мотор:\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('HTin', 0) / 10, 1)} °C",
         f"🌡️ Вход в микскулер:\t\t {round(payload.get('LTin', 0) / 10, 1)} °C",
         "",  # <-- Пустая строка
-        f"⚠️ CommWarning: {payload.get('CommWarning')}",
-        f"⛔️ CommShutdown: {payload.get('CommShutdown')}",
-        f"🟥 CommBOC: {payload.get('CommBOC')}",
-        f"🐢 CommSlowStop: {payload.get('CommSlowStop')}",
-        f"🔌 CommMainsProt: {payload.get('CommMainsProt')}"
+        f"⚠️ CommWarning:\t\t\t\t {payload.get('CommWarning')}",
+        f"⛔️ CommShutdown:\t\t {payload.get('CommShutdown')}",
+        f"🟥 CommBOC:\t\t\t\t\t\t\t\t {payload.get('CommBOC')}",
+        f"🐢 CommSlowStop:\t\t\t\t {payload.get('CommSlowStop')}",
+        f"🔌 CommMainsProt:\t\t {payload.get('CommMainsProt')}"
     ]
 
     return "\n".join(msg_lines)
