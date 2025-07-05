@@ -1,62 +1,67 @@
 import os
-from telegram import Bot, Update
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackContext
-from data_store import get_latest_data
 from formatter import format_message
-from telegram.ext import CommandHandler
 
+# Telegram config
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
+CHAT_ID = os.environ.get("CHAT_ID")  # Для send_message()
 
-bot = Bot(token=BOT_TOKEN)
-subscriptions = {}
+# Глобальное хранилище последних данных
+latest_data = {}
 
-def subscribe(update, context):
-    user_id = update.effective_user.id
-    args = context.args
+# Пользователи, подписанные на обновления (можно расширить)
+subscribed_users = set()
 
-    if not args:
-        update.message.reply_text("❗ Укажите имя устройства. Пример: /subscribe Carlsberg")
-        return
+def set_latest_data(data: dict):
+    global latest_data
+    latest_data = data
 
-    device = args[0]
-
-    if user_id not in subscriptions:
-        subscriptions[user_id] = set()
-
-    subscriptions[user_id].add(device)
-    update.message.reply_text(f"✅ Вы подписались на устройство: {device}")
-
-def unsubscribe(update, context):
-    user_id = update.effective_user.id
-    args = context.args
-
-    if not args:
-        update.message.reply_text("❗ Укажите имя устройства. Пример: /unsubscribe Carlsberg")
-        return
-
-    device = args[0]
-
-    if user_id in subscriptions and device in subscriptions[user_id]:
-        subscriptions[user_id].remove(device)
-        update.message.reply_text(f"❌ Подписка на {device} отменена")
-    else:
-        update.message.reply_text(f"⚠️ Вы не были подписаны на {device}")
+def get_latest_data():
+    return latest_data
 
 def send_message(text):
-    bot.send_message(chat_id=CHAT_ID, text=text, parse_mode="Markdown")
+    from telegram import Bot
+    bot = Bot(token=BOT_TOKEN)
+    if CHAT_ID:
+        bot.send_message(chat_id=CHAT_ID, text=text, parse_mode='Markdown')
+
+def start(update: Update, context: CallbackContext):
+    user_id = update.effective_chat.id
+    subscribed_users.add(user_id)
+
+    keyboard = [["/status"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    update.message.reply_text(
+        "📡 Вы подписались на уведомления.\nНажмите кнопку ниже, чтобы узнать статус:",
+        reply_markup=reply_markup,
+    )
 
 def status(update: Update, context: CallbackContext):
-    data = get_latest_data()
-    if data:
-        message = format_message(data["device_id"], data["timestamp"], data["payload"])
-        update.message.reply_text(message, parse_mode="Markdown")
-    else:
+    user_id = update.effective_chat.id
+    if user_id not in subscribed_users:
+        update.message.reply_text("⛔️ Вы не подписаны. Используйте /start.")
+        return
+
+    if not latest_data:
         update.message.reply_text("⚠️ Данных ещё нет.")
+        return
+
+    device_id = latest_data.get("device_id", "неизвестно")
+    timestamp = latest_data.get("timestamp")
+    payload = latest_data.get("payload", {})
+
+    text = format_message(device_id, timestamp, payload)
+    update.message.reply_text(text, parse_mode='Markdown')
 
 def start_bot():
-    bot.delete_webhook()
-    updater = Updater(token=BOT_TOKEN, use_context=True)
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("status", status))
+    updater = Updater(BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("status", status))
+
+    print("🤖 Telegram Bot запущен")
     updater.start_polling()
+    updater.idle()
