@@ -62,15 +62,16 @@ def format_message(device_id, timestamp, payload):
         f"🌡️ Подшипник DE:\t\t\t\t\t\t\t\t {round(payload.get('T_BearingDE', 0) / 10, 1)} °C",
         f"🌡️ Подшипник NDE:\t\t\t\t\t {round(payload.get('T_BearingNDE', 0) / 10, 1)} °C",
         f"🌡️ Воздух на впуске:\t\t\t\t\t {round(payload.get('T_IntakeAirA', 0) / 10, 1)} °C",
-        f"🌡️ Вход GenRoom:\t\t\t\t\t\t\t\t\t\t {round(payload.get('GenRoomInT', 0) / 10, 1)} °C",
+        f"🌡️ Вход GenRoom:\t\t\t\t\t\t\t\t\t {round(payload.get('GenRoomInT', 0) / 10, 1)} °C",
         f"🌡️ Выход GenRoom:\t\t\t\t\t\t {round(payload.get('GenRoomOutT', 0) / 10, 1)} °C",
+        "",  # <-- Пустая строка
+        f"🔁 Скорость вент. LT:\t\t\t\t\t\t {round(payload.get('LT_Speed', 0) / 10, 1)} %",
+        f"🔁 Скорость вент. HT\t\t\t\t\t\t: {round(payload.get('HT_Speed', 0) / 10, 1)} %",
         "",  # <-- Пустая строка
         f"🧯 Давл. масла:\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('P_Oil', 0) / 100, 1)} Bar",
         f"🧯 Давл. Картер:\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('P_Crankcase', 0) / 100, 1)} mBar",
         f"💧 Перепад HT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('P_CoolantDiff', 0) / 100, 1)} Bar",
         f"🛢️ Доливов масла:\t\t\t\t\t\t\t\t\t {payload.get('OilRefilCounter')}",
-        
-
         "",  # <-- Пустая строка
         f"⚠️ CommWarning:\t\t\t\t\t\t {payload.get('CommWarning')}",
         f"⛔️ CommShutdown:\t\t {payload.get('CommShutdown')}",
