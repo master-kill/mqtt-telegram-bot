@@ -46,9 +46,12 @@ def on_message(client, userdata, msg):
         timestamp = int(data.get("timestamp", time.time()))
         payload = data.get("payload", {})
 
-        if not isinstance(payload, dict) or not payload:
-            print("⚠️ Пустой или некорректный payload")
-            return
+
+
+        # Игнорируем "nodata" сообщения без логов
+        if not isinstance(payload, dict) or not payload or "nodata" in str(payload).lower():
+        return
+
 
         # Сохраняем в хранилище
         set_latest_data({
