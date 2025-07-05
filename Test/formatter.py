@@ -68,7 +68,7 @@ def format_message(device_id, timestamp, payload):
         f"🔁 Скорость вент. LT:\t\t\t\t {round(payload.get('LT_Speed', 0) / 100, 1)} %",
         f"🔁 Скорость вент. HT:\t\t\t\t {round(payload.get('HT_Speed', 0) / 100, 1)} %",
         "",  # <-- Пустая строка
-        f"🧯 Давл. масла:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('P_Oil', 0) / 1000, 1)} Bar",
+        f"🧯 Давл. масла:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('P_Oil', 0) / 10, 1)} Bar",
         f"🧯 Давл. Картер:\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('P_Crankcase', 0) / 100, 2)} mBar",
         f"💧 Перепад HT:\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t {round(payload.get('P_CoolantDiff', 0) / 100, 1)} Bar",
         f"🛢️ Доливов масла:\t\t\t\t\t\t\t\t\t {payload.get('OilRefilCounter')}",
