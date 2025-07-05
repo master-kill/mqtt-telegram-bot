@@ -67,7 +67,11 @@ def on_message(client, userdata, msg):
     # Проверяем только если eng_state в целевых значениях
         if eng_state_code in [2, 6, 7, 11] and eng_state_code != last_eng_state:
             text = format_message(...)  # или другой метод
-            send_message(text)
+
+        for user_id, devices in subscriptions.items():
+            if device_id in devices:
+                send_message(formatted_text, chat_id=user_id)
+
             last_eng_state = eng_state_code  # ОБНОВЛЯЕМ значение!
        
         # Проверяем на изменение состояний
