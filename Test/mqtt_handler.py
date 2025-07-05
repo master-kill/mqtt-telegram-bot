@@ -60,15 +60,25 @@ def on_message(client, userdata, msg):
             "payload": payload
         })
 
-        # Проверяем на изменение состояний
-        eng_state = payload.get("Eng_state")
-        controller_mode = payload.get("ControllerMode")
+        eng_state_code = payload.get("Eng_state")
 
-        if eng_state != last_eng_state: #""" or controller_mode != last_controller_mode"""
-            last_eng_state = eng_state
- #           last_controller_mode = controller_mode
-            text = format_message(device_id, timestamp, payload)
+        global last_eng_state
+
+    # Проверяем только если eng_state в целевых значениях
+        if eng_state_code in [2, 6, 7, 11] and eng_state_code != last_eng_state:
+            text = format_message(...)  # или другой метод
             send_message(text)
+            last_eng_state = eng_state_code  # ОБНОВЛЯЕМ значение!
+       
+        # Проверяем на изменение состояний
+#        eng_state = payload.get("Eng_state")
+ #       controller_mode = payload.get("ControllerMode")
+
+ #       if eng_state != last_eng_state: #""" or controller_mode != last_controller_mode"""
+  #          last_eng_state = eng_state
+ #           last_controller_mode = controller_mode
+   #         text = format_message(device_id, timestamp, payload)
+    #        send_message(text)
         else:
             print("ℹ️ Без изменений Eng_state/ControllerMode")
 
