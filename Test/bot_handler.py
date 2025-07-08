@@ -1,7 +1,7 @@
 # bot_handler.py
 
 import os
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from data_store import latest_data, subscriptions
 from formatter import format_message
@@ -16,7 +16,7 @@ def start(update: Update, context: CallbackContext):
         "/subscribe <device_id> — подписка на устройство\n"
         "/unsubscribe <device_id> — отписка\n"
         "/my — мои подписки\n"
-        "/status <device_id> — статус устройства"
+        "/status — статус устройств"
     )
 
 def subscribe(update: Update, context: CallbackContext):
@@ -57,33 +57,50 @@ def my_subscriptions(update: Update, context: CallbackContext):
 
 def status(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
-    if len(context.args) != 1:
-        update.message.reply_text("❗ Укажи устройство: /status <device_id>")
+    subs = subscriptions.get(chat_id, set())
+    if not subs:
+        update.message.reply_text("⚠️ Нет активных подписок.")
         return
 
-    device_id = context.args[0]
-    data = latest_data.get(device_id)
-    if not data:
-        update.message.reply_text(f"⚠️ Нет данных для устройства {device_id}")
-        return
+    messages = []
+    for device_id in subs:
+        data = latest_data.get(device_id)
+        if data:
+            msg = format_message(device_id, data["timestamp"], data["payload"])
+            messages.append(msg)
 
-    msg = format_message(device_id, data["timestamp"], data["payload"])
-    update.message.reply_text(msg, parse_mode='Markdown')
-
-def send_message(text):
-    """Функция для отправки сообщений — вызывается из mqtt_handler."""
-    for chat_id, devices in subscriptions.items():
-        # broadcast выключен, используется notify_subscribers
-        pass
+    if messages:
+        for m in messages:
+            update.message.reply_text(m, parse_mode='Markdown')
+    else:
+        update.message.reply_text("⚠️ Нет данных для подписанных устройств.")
 
 def notify_subscribers(device_id, timestamp, payload):
     from telegram import Bot
     bot = Bot(token=BOT_TOKEN)
     msg = format_message(device_id, timestamp, payload)
 
+    # значения, за которыми следим
+    new_eng_state = payload.get("Eng_state")
+    # new_controller_mode = payload.get("ControllerMode")  # ← пока игнорируем
+
     for chat_id, device_ids in subscriptions.items():
-        if device_id in device_ids:
+        if device_id not in device_ids:
+            continue
+
+        previous = latest_data.get(f"{chat_id}:{device_id}")
+        last_eng_state = previous.get("Eng_state") if previous else None
+        # last_controller_mode = previous.get("ControllerMode") if previous else None
+
+        # Проверяем только изменение Eng_state
+        if last_eng_state != new_eng_state:
             bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
+
+        # Обновляем историю для сравнения в будущем
+        latest_data[f"{chat_id}:{device_id}"] = payload
+
+def send_message(text):
+    pass  # больше не используется
 
 def start_bot():
     updater = Updater(BOT_TOKEN, use_context=True)
