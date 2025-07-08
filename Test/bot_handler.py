@@ -1,103 +1,86 @@
-from telegram import Bot, Update, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackContext
 import os
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackContext
+from data_store import latest_data, subscriptions
 from formatter import format_message
 
-# Используем строку напрямую вместо ParseMode
-PARSE_MODE = 'Markdown'
-
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
-
-# Хранилище пользователей и их подписок
-subscribers = {}
-latest_data = {}
-
-def send_message(text, user_ids=None):
-    if user_ids is None:
-        user_ids = list(subscribers.keys())
-    bot = Bot(token=BOT_TOKEN)
-    for user_id in user_ids:
-        try:
-            bot.send_message(chat_id=user_id, text=text, parse_mode=PARSE_MODE)
-        except Exception as e:
-            print(f"❌ Ошибка отправки пользователю {user_id}: {e}")
-
-def set_latest_data(data):
-    device_id = data.get("device_id", "unknown")
-    latest_data[device_id] = data
-
-    # Рассылка только тем, кто подписан на это устройство
-    user_ids = [uid for uid, devices in subscribers.items() if device_id in devices]
-    text = format_message(device_id, data.get("timestamp"), data.get("payload", {}))
-    send_message(text, user_ids)
 
 def start(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    subscribers[user_id] = set()  # по умолчанию пустой набор подписок
-    update.message.reply_text(
-        "👋 Добро пожаловать! Вы можете использовать команды:\n"
-        "/subscribe <device_id> — подписка на устройство\n"
-        "/unsubscribe <device_id> — отписка от устройства\n"
-        "/status — показать статус устройства\n"
-        "/my — показать ваши подписки"
-    )
-
-def subscribe(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    if len(context.args) != 1:
-        update.message.reply_text("❗ Использование: /subscribe <device_id>")
-        return
-    device_id = context.args[0]
-    subscribers.setdefault(user_id, set()).add(device_id)
-    update.message.reply_text(f"✅ Подписка на `{device_id}` активна", parse_mode=PARSE_MODE)
-
-def unsubscribe(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    if len(context.args) != 1:
-        update.message.reply_text("❗ Использование: /unsubscribe <device_id>")
-        return
-    device_id = context.args[0]
-    if user_id in subscribers and device_id in subscribers[user_id]:
-        subscribers[user_id].remove(device_id)
-        update.message.reply_text(f"🚫 Отписка от `{device_id}` выполнена", parse_mode=PARSE_MODE)
-    else:
-        update.message.reply_text("⚠️ Вы не подписаны на это устройство")
+    reply_markup = ReplyKeyboardMarkup([["/status"], ["/my_subscriptions"]], resize_keyboard=True)
+    update.message.reply_text("👋 Привет! Я бот мониторинга устройств. Используй команды ниже:", reply_markup=reply_markup)
 
 def status(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    devices = subscribers.get(user_id)
-    if not devices:
-        update.message.reply_text("⚠️ Вы не подписаны ни на одно устройство")
-        return
-    for device_id in devices:
-        data = latest_data.get(device_id)
-        if data:
-            text = format_message(device_id, data.get("timestamp"), data.get("payload", {}))
-            update.message.reply_text(text, parse_mode=PARSE_MODE)
-        else:
-            update.message.reply_text(f"⚠️ Нет данных для устройства `{device_id}`", parse_mode=PARSE_MODE)
+    chat_id = update.effective_chat.id
 
-def my(update: Update, context: CallbackContext):
-    user_id = update.message.chat_id
-    devices = subscribers.get(user_id)
-    if devices:
-        update.message.reply_text(
-            f"📋 Ваши подписки:\n" + "\n".join(f"- `{dev}`" for dev in devices),
-            parse_mode=PARSE_MODE
-        )
+    # Проверка: есть ли подписки у пользователя
+    user_devices = subscriptions.get(chat_id)
+    if not user_devices:
+        update.message.reply_text("⚠️ Вы не подписаны ни на одно устройство. Используйте команду /subscribe <device_id>")
+        return
+
+    # Получение данных по каждому устройству
+    for device_id in user_devices:
+        device_data = latest_data.get(device_id)
+        if not device_data:
+            update.message.reply_text(f"⚠️ Нет данных для устройства {device_id}")
+            continue
+
+        msg = format_message(device_id, device_data["timestamp"], device_data["payload"])
+        update.message.reply_text(msg, parse_mode="Markdown")
+
+def subscribe(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+
+    if len(context.args) != 1:
+        update.message.reply_text("⚠️ Использование: /subscribe <device_id>")
+        return
+
+    device_id = context.args[0]
+
+    # Проверяем, есть ли данные по этому устройству
+    if device_id not in latest_data:
+        update.message.reply_text(f"❌ Устройство '{device_id}' не найдено.")
+        return
+
+    if chat_id not in subscriptions:
+        subscriptions[chat_id] = set()
+
+    subscriptions[chat_id].add(device_id)
+    update.message.reply_text(f"✅ Вы подписались на обновления устройства '{device_id}'")
+
+def my_subscriptions(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    user_devices = subscriptions.get(chat_id)
+
+    if not user_devices:
+        update.message.reply_text("ℹ️ У вас нет активных подписок.")
     else:
-        update.message.reply_text("❗ У вас нет подписок")
+        devices_list = "\n".join(f"🔹 {dev}" for dev in user_devices)
+        update.message.reply_text(f"📋 Ваши подписки:\n{devices_list}")
+
+def send_message(text: str, chat_ids: list[int] = None):
+    if not text:
+        return
+
+    if chat_ids is None:
+        # Отправка всем подписанным
+        chat_ids = [chat_id for chat_id in subscriptions]
+
+    for chat_id in chat_ids:
+        try:
+            bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+        except Exception as e:
+            print(f"Telegram ERROR for chat_id {chat_id}: {e}")
+
+# Инициализация и запуск бота
+updater = Updater(BOT_TOKEN)
+bot = updater.bot
+
+updater.dispatcher.add_handler(CommandHandler("start", start))
+updater.dispatcher.add_handler(CommandHandler("status", status))
+updater.dispatcher.add_handler(CommandHandler("subscribe", subscribe))
+updater.dispatcher.add_handler(CommandHandler("my_subscriptions", my_subscriptions))
 
 def start_bot():
-    updater = Updater(token=BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("subscribe", subscribe))
-    dp.add_handler(CommandHandler("unsubscribe", unsubscribe))
-    dp.add_handler(CommandHandler("status", status))
-    dp.add_handler(CommandHandler("my", my))
-
     updater.start_polling()
-    print("✅ Telegram Bot запущен")
