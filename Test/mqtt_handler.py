@@ -1,25 +1,22 @@
+# mqtt_handler.py
+
 import os
 import json
-import time
-import threading
 import ssl
-from datetime import datetime
+import time
 import paho.mqtt.client as mqtt
+from data_store import latest_data, subscriptions
+from bot_handler import send_message, notify_subscribers
 
-from formatter import format_message
-from bot_handler import send_message, latest_data
+MQTT_BROKER = os.getenv("MQTT_BROKER")
+MQTT_PORT = int(os.getenv("MQTT_PORT", 8883))
+MQTT_USER = os.getenv("MQTT_USER")
+MQTT_PASS = os.getenv("MQTT_PASS")
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "telto/devices/#")
 
-MQTT_BROKER = os.environ.get("MQTT_BROKER")
-MQTT_PORT = int(os.environ.get("MQTT_PORT", 8883))
-MQTT_TOPIC = os.environ.get("MQTT_TOPIC")
-MQTT_USER = os.environ.get("MQTT_USER")
-MQTT_PASS = os.environ.get("MQTT_PASS")
-
-# MQTT callbacks
 def on_connect(client, userdata, flags, rc):
-    print(f"✅ Connected to MQTT broker with result code {rc}")
+    print("✅ MQTT подключён с кодом:", rc)
     client.subscribe(MQTT_TOPIC)
-    print(f"📡 Subscribed to topic: {MQTT_TOPIC}")
 
 def on_message(client, userdata, msg):
     try:
@@ -77,22 +74,15 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print("❌ MQTT ERROR:", e)
 
-# Запуск клиента
 def start_mqtt():
     client = mqtt.Client()
     client.username_pw_set(MQTT_USER, MQTT_PASS)
-
-    # Включение TLS
     client.tls_set(cert_reqs=ssl.CERT_NONE)
     client.tls_insecure_set(True)
 
     client.on_connect = on_connect
     client.on_message = on_message
 
-    print("🚀 Connecting to MQTT broker...")
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.loop_forever()
 
-# Запуск потока
-def run():
-    threading.Thread(target=start_mqtt, daemon=True).start()
