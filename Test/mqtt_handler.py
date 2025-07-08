@@ -7,7 +7,7 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 
 from formatter import format_message
-from bot_handler import send_message, set_latest_data
+from bot_handler import send_message, latest_data
 
 MQTT_BROKER = os.environ.get("MQTT_BROKER")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", 8883))
@@ -66,7 +66,7 @@ def on_message(client, userdata, msg):
         send_message(text)
 
         # Обновление данных
-        set_latest_data({
+        latest_data({
             "device_id": device_id,
             "timestamp": timestamp,
             "payload": payload
