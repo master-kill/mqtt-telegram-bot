@@ -1,7 +1,7 @@
 import os
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackContext
-from data_store import latest_data, subscriptions
+from data_store import latest_data, user_subscriptions
 from formatter import format_message
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
