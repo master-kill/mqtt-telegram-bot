@@ -6,7 +6,7 @@ import ssl
 import time
 import paho.mqtt.client as mqtt
 from data_store import latest_data, subscriptions, previous_states
-from bot_handler import send_message, notify_subscribers
+from bot_handler import send_message#, notify_subscribers
 
 MQTT_BROKER = os.getenv("MQTT_BROKER")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 8883))
