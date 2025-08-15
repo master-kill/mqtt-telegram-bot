@@ -1,7 +1,7 @@
 from flask import Flask
-import threading
 from mqtt_handler import start_mqtt
 from bot_handler import start_bot
+import threading
 
 app = Flask(__name__)
 
@@ -35,7 +35,16 @@ def index():
     '''
 
 
+def run_mqtt():
+    start_mqtt()
+
 if __name__ == "__main__":
-    threading.Thread(target=start_mqtt, daemon=True).start()
-    threading.Thread(target=start_bot, daemon=True).start()
+    # Запускаем бота
+    bot_updater = start_bot()
+    
+    # Запускаем MQTT в отдельном потоке
+    mqtt_thread = threading.Thread(target=run_mqtt, daemon=True)
+    mqtt_thread.start()
+    
+    # Запускаем Flask
     app.run(host="0.0.0.0", port=10000)
