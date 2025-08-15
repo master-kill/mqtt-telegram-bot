@@ -1,12 +1,10 @@
-# mqtt_handler.py
-
 import os
 import json
 import ssl
 import time
 import paho.mqtt.client as mqtt
-from data_store import latest_data, subscriptions, previous_states
-from bot_handler import send_message, notify_subscribers
+from data_store import latest_data, previous_states, get_all_subscribers
+from bot_handler import notify_subscribers
 
 MQTT_BROKER = os.getenv("MQTT_BROKER")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 8883))
@@ -14,7 +12,7 @@ MQTT_USER = os.getenv("MQTT_USER")
 MQTT_PASS = os.getenv("MQTT_PASS")
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "telto/devices/#")
 
-# Список обязательных ключей, которые должны быть в payload
+# Список обязательных ключей
 required_keys = [
     "battery_voltage", "CommWarning", "CommShutdown", "CommBOC", "CommSlowStop", "CommMainsProt",
     "GeneratorP", "Genset_kWh", "RunningHours", "Eng_state", "ControllerMode",
@@ -53,7 +51,7 @@ def on_message(client, userdata, msg):
             print("⚠️ Пропущено: не все ключи в payload.")
             return
 
-        # Обновляем данные
+        # Обновляем данные в памяти
         latest_data[device_id] = {
             "timestamp": timestamp,
             "payload": payload
@@ -61,19 +59,21 @@ def on_message(client, userdata, msg):
 
         # Проверка изменения состояния
         current_eng_state = payload.get("Eng_state")
-        prev = previous_states.get(device_id, {})
-        previous_eng_state = prev.get("Eng_state")
+        prev_state = previous_states.get(device_id, {}).get("Eng_state")
 
-        if current_eng_state != previous_eng_state:
-            previous_states[device_id] = {
-                "Eng_state": current_eng_state
-            }
+        if current_eng_state != prev_state:
+            previous_states[device_id] = {"Eng_state": current_eng_state}
             notify_subscribers(device_id, timestamp, payload)
         else:
             print(f"ℹ️ Без изменений Eng_state: {current_eng_state}")
 
     except Exception as e:
         print("❌ MQTT ERROR:", e)
+
+def on_disconnect(client, userdata, rc):
+    print("MQTT disconnected, retrying...")
+    time.sleep(5)
+    client.reconnect()
 
 def start_mqtt():
     client = mqtt.Client()
@@ -83,6 +83,7 @@ def start_mqtt():
 
     client.on_connect = on_connect
     client.on_message = on_message
+    client.on_disconnect = on_disconnect
 
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.loop_forever()
