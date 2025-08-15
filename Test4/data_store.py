@@ -16,20 +16,35 @@ sheet = client.open("MQTT Subscriptions").sheet1
 latest_data = {}
 previous_states = {}
 
-def add_subscription(chat_id, device_id):
-    """Добавить основную подписку на устройство"""
+def get_subscriptions(chat_id):
+    """Получить все подписки пользователя"""
     try:
-        # Проверяем существующую запись
         records = sheet.get_all_records()
-        for row in records:
-            if str(row['chat_id']) == str(chat_id) and row['device_id'] == device_id:
-                return True
-        
-        # Добавляем новую запись
-        sheet.append_row([chat_id, device_id, ''])
+        return [row['device_id'] for row in records if str(row['chat_id']) == str(chat_id)]
+    except Exception as e:
+        print(f"Error getting subscriptions: {e}")
+        return []
+
+def add_subscription(chat_id, device_id):
+    """Добавить новую подписку"""
+    try:
+        sheet.append_row([chat_id, device_id, ''])  # Третья колонка для состояний
         return True
     except Exception as e:
-        print(f"Subscription error: {e}")
+        print(f"Error adding subscription: {e}")
+        return False
+
+def remove_subscription(chat_id, device_id):
+    """Удалить подписку"""
+    try:
+        records = sheet.get_all_records()
+        for i, row in enumerate(records):
+            if str(row['chat_id']) == str(chat_id) and row['device_id'] == device_id:
+                sheet.delete_rows(i+2)  # +2 потому что первая строка - заголовки
+                return True
+        return False
+    except Exception as e:
+        print(f"Error removing subscription: {e}")
         return False
 
 def add_state_subscription(chat_id, device_id, state_code):
@@ -44,11 +59,10 @@ def add_state_subscription(chat_id, device_id, state_code):
                     sheet.update_cell(i+2, 3, ','.join(filter(None, current_states)))
                 return True
         
-        # Если основной подписки нет - создаем
         sheet.append_row([chat_id, device_id, str(state_code)])
         return True
     except Exception as e:
-        print(f"State subscription error: {e}")
+        print(f"Error adding state subscription: {e}")
         return False
 
 def get_subscribed_states(chat_id, device_id):
@@ -61,7 +75,7 @@ def get_subscribed_states(chat_id, device_id):
                 return [int(s) for s in states.split(',') if s]
         return []
     except Exception as e:
-        print(f"Get states error: {e}")
+        print(f"Error getting subscribed states: {e}")
         return []
 
 def get_all_subscribers(device_id):
@@ -70,18 +84,5 @@ def get_all_subscribers(device_id):
         records = sheet.get_all_records()
         return [row['chat_id'] for row in records if row['device_id'] == device_id]
     except Exception as e:
-        print(f"Get subscribers error: {e}")
+        print(f"Error getting subscribers: {e}")
         return []
-
-def remove_subscription(chat_id, device_id):
-    """Удалить подписку"""
-    try:
-        cells = sheet.findall(str(chat_id))
-        for cell in cells:
-            if sheet.cell(cell.row, 2).value == device_id:
-                sheet.delete_rows(cell.row)
-                return True
-        return False
-    except Exception as e:
-        print(f"Unsubscribe error: {e}")
-        return False
