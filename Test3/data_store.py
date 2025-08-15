@@ -1,12 +1,19 @@
+import os
+import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Авторизация
+# Получаем credentials из переменной окружения
+google_creds = os.getenv("GOOGLE_CREDENTIALS")
+if not google_creds:
+    raise ValueError("Не заданы GOOGLE_CREDENTIALS в переменных окружения")
+
+creds_json = json.loads(google_creds)
 scope = ["https://spreadsheets.google.com/feeds", 
          "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 client = gspread.authorize(creds)
-sheet = client.open("MQTT Subscriptions").sheet1  # Название вашей таблицы
+sheet = client.open("MQTT Subscriptions").sheet1
 
 def get_subscriptions(chat_id):
     """Получить все подписки пользователя."""
