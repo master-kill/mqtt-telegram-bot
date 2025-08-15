@@ -45,7 +45,7 @@ def add_subscription(chat_id, device_id):
             if str(row['chat_id']) == str(chat_id) and row['device_id'] == device_id:
                 return True
         
-        sheet.append_row([chat_id, device_id, ''])
+        sheet.append_row([chat_id, device_id, ''])  # Пустая строка для состояний
         return True
     except Exception as e:
         logger.error(f"Ошибка добавления подписки: {e}")
@@ -57,7 +57,7 @@ def remove_subscription(chat_id, device_id):
         records = sheet.get_all_records()
         for i, row in enumerate(records):
             if str(row['chat_id']) == str(chat_id) and row['device_id'] == device_id:
-                sheet.delete_rows(i+2)
+                sheet.delete_rows(i+2)  # +2 потому что первая строка - заголовки
                 return True
         return False
     except Exception as e:
@@ -71,15 +71,28 @@ def add_state_subscription(chat_id, device_id, state_code):
 def add_state_subscriptions(chat_id, device_id, state_codes):
     """Добавить подписку на несколько состояний"""
     try:
+        # Преобразуем коды в строки и убираем дубли
+        state_codes_str = [str(code) for code in state_codes]
+        unique_states = list(set(state_codes_str))
+        
         records = sheet.get_all_records()
         for i, row in enumerate(records):
             if str(row['chat_id']) == str(chat_id) and row['device_id'] == device_id:
-                current_states = row.get('states', '').split(',')
-                updated_states = list(set(current_states + [str(code) for code in state_codes]))
-                sheet.update_cell(i+2, 3, ','.join(filter(None, updated_states)))
+                # Получаем текущие состояния
+                current_states = []
+                if 'states' in row and row['states']:
+                    current_states = row['states'].split(',')
+                
+                # Объединяем и убираем дубли
+                updated_states = list(set(current_states + unique_states))
+                updated_states = [s for s in updated_states if s]  # Удаляем пустые
+                
+                # Обновляем ячейку
+                sheet.update_cell(i+2, 3, ','.join(updated_states))
                 return True
         
-        sheet.append_row([chat_id, device_id, ','.join(map(str, state_codes))])
+        # Если подписки не существовало
+        sheet.append_row([chat_id, device_id, ','.join(unique_states)])
         return True
     except Exception as e:
         logger.error(f"Ошибка добавления подписок: {e}")
