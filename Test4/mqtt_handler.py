@@ -1,25 +1,23 @@
 import os
 import json
 import ssl
-import time
+import logging
 import paho.mqtt.client as mqtt
-from data_store import latest_data, previous_states, get_all_subscribers
-from bot_handler import notify_subscribers
+from bot_handler import notify_subscribers  # Теперь функция существует
+from data_store import latest_data, previous_states
+
+# Настройка логгирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 MQTT_BROKER = os.getenv("MQTT_BROKER")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 8883))
 MQTT_USER = os.getenv("MQTT_USER")
 MQTT_PASS = os.getenv("MQTT_PASS")
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "telto/devices/#")
-
-# Список обязательных ключей
-required_keys = [
-    "battery_voltage", "CommWarning", "CommShutdown", "CommBOC", "CommSlowStop", "CommMainsProt",
-    "GeneratorP", "Genset_kWh", "RunningHours", "Eng_state", "ControllerMode",
-    "T_CoolantIn", "P_CoolantDiff", "T_IntakeAirA", "P_Oil", "P_Crankcase",
-    "T_BearingDE", "T_BearingNDE", "LT_eng_in", "LTafterTKLT", "HTafterTKHT",
-    "LT_Speed", "HT_Speed", "GenRoomInT", "GenRoomOutT", "OilRefilCounter"
-]
 
 def on_connect(client, userdata, flags, rc):
     print("✅ MQTT подключён с кодом:", rc)
