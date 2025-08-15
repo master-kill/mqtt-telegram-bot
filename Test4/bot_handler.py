@@ -4,17 +4,18 @@ from telegram import Update, Bot
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from data_store import (
     latest_data,
+    previous_states,
+    get_subscriptions,
     add_subscription,
     remove_subscription,
-    get_subscribed_states,
     add_state_subscription,
-    get_all_subscribers,
-    previous_states,
-    get_subscriptions
+    add_state_subscriptions,
+    get_subscribed_states,
+    get_all_subscribers
 )
 from formatter import format_message
 
-# Настройка логов
+# Настройка логгирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -22,19 +23,30 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+# Карта состояний
 STATE_MAP = {
-    1: "Готов", 2: "Не готов", 6: "Запуск", 7: "В работе",
-    8: "Нагружен", 9: "Разгрузка", 10: "Расхолаживание",
-    11: "Остановка", 15: "Нагружается", 19: "Прогрев"
+    1: "Готов",
+    2: "Не готов",
+    6: "Запуск",
+    7: "В работе",
+    8: "Нагружен",
+    9: "Разгрузка",
+    10: "Расхолаживание",
+    11: "Остановка",
+    15: "Нагружается",
+    19: "Прогрев"
 }
 
 def start(update: Update, context: CallbackContext):
+    """Обработчик команды /start"""
     user = update.effective_user
     update.message.reply_text(
         f"Привет, {user.first_name}!\n"
         "Доступные команды:\n"
         "/subscribe <device_id> - подписка на устройство\n"
-        "/subscribe_state <device_id> <код> - подписка на состояние\n"
+        "/subscribe_state <device_id> <код> - подписка на одно состояние\n"
+        "/subscribe_states <device_id> <коды> - подписка на несколько состояний\n"
         "/list_states - список состояний\n"
         "/unsubscribe <device_id> - отписка\n"
         "/my - мои подписки\n"
@@ -42,39 +54,25 @@ def start(update: Update, context: CallbackContext):
     )
 
 def subscribe(update: Update, context: CallbackContext):
+    """Подписка на все состояния устройства"""
     chat_id = update.effective_chat.id
     if len(context.args) != 1:
         update.message.reply_text("❗ Формат: /subscribe <device_id>")
         return
 
     device_id = context.args[0]
-    if device_id not in latest_data:
-        update.message.reply_text(f"❌ Устройство {device_id} не найдено")
-        return
-
     if add_subscription(chat_id, device_id):
-        update.message.reply_text(f"✅ Подписка на {device_id} оформлена")
+        update.message.reply_text(f"✅ Подписка на {device_id} оформлена (все состояния)")
     else:
         update.message.reply_text("❌ Ошибка при подписке")
 
-def unsubscribe(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    if len(context.args) != 1:
-        update.message.reply_text("❗ Формат: /unsubscribe <device_id>")
-        return
-
-    device_id = context.args[0]
-    if remove_subscription(chat_id, device_id):
-        update.message.reply_text(f"🚫 Подписка на {device_id} удалена")
-    else:
-        update.message.reply_text(f"❌ Не подписан на {device_id} или ошибка")
-
 def subscribe_state(update: Update, context: CallbackContext):
+    """Подписка на одно состояние"""
     chat_id = update.effective_chat.id
     if len(context.args) != 2:
         update.message.reply_text(
-            "❗ Формат: /subscribe_state <device_id> <код_состояния>\n"
-            "Используйте /list_states для просмотра кодов"
+            "❗ Формат: /subscribe_state <device_id> <код>\n"
+            "Пример: /subscribe_state generator1 7"
         )
         return
 
@@ -94,28 +92,81 @@ def subscribe_state(update: Update, context: CallbackContext):
     else:
         update.message.reply_text("❌ Ошибка при подписке")
 
+def subscribe_states(update: Update, context: CallbackContext):
+    """Пакетная подписка на состояния"""
+    chat_id = update.effective_chat.id
+    if len(context.args) < 2:
+        update.message.reply_text(
+            "❗ Формат: /subscribe_states <device_id> <код1>,<код2>,...\n"
+            "Пример: /subscribe_states generator1 7,8,9"
+        )
+        return
+
+    device_id = context.args[0]
+    try:
+        state_codes = [int(code) for code in context.args[1].split(',')]
+        invalid_codes = [code for code in state_codes if code not in STATE_MAP]
+        
+        if invalid_codes:
+            update.message.reply_text(
+                f"❌ Некорректные коды: {', '.join(map(str, invalid_codes))}\n"
+                "Используйте /list_states для просмотра доступных состояний"
+            )
+            return
+
+        if add_state_subscriptions(chat_id, device_id, state_codes):
+            state_names = [f"{code} ({STATE_MAP[code]})" for code in state_codes]
+            update.message.reply_text(
+                f"✅ Подписки для {device_id} оформлены на:\n"
+                f"{', '.join(state_names)}"
+            )
+        else:
+            update.message.reply_text("❌ Ошибка при оформлении подписок")
+
+    except ValueError:
+        update.message.reply_text("❌ Коды должны быть числами через запятую")
+
 def list_states(update: Update, context: CallbackContext):
-    message = "📋 Коды состояний:\n" + \
+    """Показать доступные состояния"""
+    message = "📋 Доступные состояния:\n" + \
         "\n".join([f"{code}: {name}" for code, name in STATE_MAP.items()])
     update.message.reply_text(message)
 
+def unsubscribe(update: Update, context: CallbackContext):
+    """Отписаться от устройства"""
+    chat_id = update.effective_chat.id
+    if len(context.args) != 1:
+        update.message.reply_text("❗ Формат: /unsubscribe <device_id>")
+        return
+
+    device_id = context.args[0]
+    if remove_subscription(chat_id, device_id):
+        update.message.reply_text(f"🚫 Подписка на {device_id} удалена")
+    else:
+        update.message.reply_text(f"❌ Не подписан на {device_id} или ошибка")
+
 def my_subscriptions(update: Update, context: CallbackContext):
+    """Показать мои подписки"""
     chat_id = update.effective_chat.id
     subs = get_subscriptions(chat_id)
+    
     if not subs:
         update.message.reply_text("ℹ️ Нет активных подписок.")
-    else:
-        message = "📋 Ваши подписки:\n"
-        for device_id in subs:
-            states = get_subscribed_states(chat_id, device_id)
-            if states:
-                states_str = ", ".join(f"{s}({STATE_MAP.get(s, '?')})" for s in states)
-                message += f"• {device_id} → состояния: {states_str}\n"
-            else:
-                message += f"• {device_id} → все изменения\n"
-        update.message.reply_text(message)
+        return
+
+    message = ["📋 Ваши подписки:"]
+    for device_id in subs:
+        states = get_subscribed_states(chat_id, device_id)
+        if states:
+            state_list = ", ".join(f"{code} ({STATE_MAP.get(code, '?')})" for code in states)
+            message.append(f"🔹 {device_id}: {state_list}")
+        else:
+            message.append(f"🔹 {device_id}: все состояния")
+    
+    update.message.reply_text("\n".join(message))
 
 def status(update: Update, context: CallbackContext):
+    """Показать статус подписанных устройств"""
     chat_id = update.effective_chat.id
     subs = get_subscriptions(chat_id)
     if not subs:
@@ -136,6 +187,7 @@ def status(update: Update, context: CallbackContext):
         update.message.reply_text("⚠️ Нет данных для подписанных устройств.")
 
 def notify_subscribers(device_id, timestamp, payload):
+    """Уведомить подписчиков об изменениях"""
     bot = Bot(token=BOT_TOKEN)
     msg = format_message(device_id, timestamp, payload)
     current_state = payload.get("Eng_state")
@@ -159,15 +211,17 @@ def notify_subscribers(device_id, timestamp, payload):
     previous_states[f"{chat_id}:{device_id}"] = {"Eng_state": current_state}
 
 def start_bot():
+    """Запуск бота"""
     try:
         updater = Updater(BOT_TOKEN, use_context=True)
         dp = updater.dispatcher
 
-        # Регистрация обработчиков
+        # Регистрация обработчиков команд
         handlers = [
             CommandHandler("start", start),
             CommandHandler("subscribe", subscribe),
             CommandHandler("subscribe_state", subscribe_state),
+            CommandHandler("subscribe_states", subscribe_states),
             CommandHandler("list_states", list_states),
             CommandHandler("unsubscribe", unsubscribe),
             CommandHandler("my", my_subscriptions),
@@ -177,9 +231,9 @@ def start_bot():
         for handler in handlers:
             dp.add_handler(handler)
 
-        logger.info("Запускаем бота в режиме polling...")
+        logger.info("Запуск бота в режиме polling...")
         updater.start_polling()
-        logger.info("Бот успешно запущен и слушает команды")
+        logger.info("Бот успешно запущен")
         return updater
 
     except Exception as e:
