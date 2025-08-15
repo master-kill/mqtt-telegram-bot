@@ -69,8 +69,151 @@ def start(update: Update, context: CallbackContext):
     except Exception as e:
         logger.error(f"Ошибка в команде /start: {e}")
 
+def subscribe(update: Update, context: CallbackContext):
+    """Обработчик команды /subscribe"""
+    try:
+        chat_id = update.effective_chat.id
+        if len(context.args) != 1:
+            update.message.reply_text("❗ Формат: /subscribe <device_id>")
+            return
+
+        device_id = context.args[0]
+        if device_id not in latest_data:
+            update.message.reply_text(f"❌ Устройство {device_id} не найдено")
+            return
+
+        if add_subscription(chat_id, device_id):
+            update.message.reply_text(f"✅ Подписка на {device_id} оформлена")
+        else:
+            update.message.reply_text("❌ Ошибка при подписке")
+    except Exception as e:
+        logger.error(f"Ошибка в команде /subscribe: {e}")
+
+def unsubscribe(update: Update, context: CallbackContext):
+    """Обработчик команды /unsubscribe"""
+    try:
+        chat_id = update.effective_chat.id
+        if len(context.args) != 1:
+            update.message.reply_text("❗ Формат: /unsubscribe <device_id>")
+            return
+
+        device_id = context.args[0]
+        if remove_subscription(chat_id, device_id):
+            update.message.reply_text(f"🚫 Подписка на {device_id} удалена")
+        else:
+            update.message.reply_text(f"❌ Не подписан на {device_id} или ошибка")
+    except Exception as e:
+        logger.error(f"Ошибка в команде /unsubscribe: {e}")
+
+def subscribe_state(update: Update, context: CallbackContext):
+    """Обработчик команды /subscribe_state"""
+    try:
+        chat_id = update.effective_chat.id
+        if len(context.args) != 2:
+            update.message.reply_text("❗ Формат: /subscribe_state <device_id> <код>")
+            return
+
+        device_id, state_code = context.args[0], context.args[1]
+        try:
+            state_code = int(state_code)
+            if state_code not in STATE_MAP:
+                raise ValueError
+        except ValueError:
+            update.message.reply_text("❌ Некорректный код состояния")
+            return
+
+        if add_state_subscription(chat_id, device_id, state_code):
+            update.message.reply_text(f"✅ Подписка на состояние {STATE_MAP[state_code]} ({state_code}) оформлена")
+        else:
+            update.message.reply_text("❌ Ошибка при подписке")
+    except Exception as e:
+        logger.error(f"Ошибка в команде /subscribe_state: {e}")
+
+def subscribe_states(update: Update, context: CallbackContext):
+    """Обработчик команды /subscribe_states"""
+    try:
+        chat_id = update.effective_chat.id
+        if len(context.args) < 2:
+            update.message.reply_text("❗ Формат: /subscribe_states <device_id> <коды через запятую>")
+            return
+
+        device_id = context.args[0]
+        try:
+            state_codes = [int(code.strip()) for code in context.args[1].split(',')]
+            invalid_codes = [code for code in state_codes if code not in STATE_MAP]
+            
+            if invalid_codes:
+                update.message.reply_text(f"❌ Некорректные коды: {', '.join(map(str, invalid_codes))}")
+                return
+
+            if add_state_subscriptions(chat_id, device_id, state_codes):
+                state_names = [f"{code} ({STATE_MAP[code]})" for code in state_codes]
+                update.message.reply_text(f"✅ Подписки оформлены на: {', '.join(state_names)}")
+            else:
+                update.message.reply_text("❌ Ошибка при оформлении подписок")
+        except ValueError:
+            update.message.reply_text("❌ Коды должны быть числами через запятую")
+    except Exception as e:
+        logger.error(f"Ошибка в команде /subscribe_states: {e}")
+
+def list_states(update: Update, context: CallbackContext):
+    """Обработчик команды /list_states"""
+    try:
+        message = "📋 Доступные состояния:\n" + \
+            "\n".join([f"{code}: {name}" for code, name in STATE_MAP.items()])
+        update.message.reply_text(message)
+    except Exception as e:
+        logger.error(f"Ошибка в команде /list_states: {e}")
+
+def my_subscriptions(update: Update, context: CallbackContext):
+    """Обработчик команды /my"""
+    try:
+        chat_id = update.effective_chat.id
+        subs = get_subscriptions(chat_id)
+        
+        if not subs:
+            update.message.reply_text("ℹ️ Нет активных подписок.")
+            return
+
+        message = ["📋 Ваши подписки:"]
+        for device_id in subs:
+            states = get_subscribed_states(chat_id, device_id)
+            if states:
+                state_list = ", ".join(f"{code} ({STATE_MAP.get(code, '?')})" for code in states)
+                message.append(f"🔹 {device_id}: {state_list}")
+            else:
+                message.append(f"🔹 {device_id}: все состояния")
+        
+        update.message.reply_text("\n".join(message))
+    except Exception as e:
+        logger.error(f"Ошибка в команде /my: {e}")
+
+def status(update: Update, context: CallbackContext):
+    """Обработчик команды /status"""
+    try:
+        chat_id = update.effective_chat.id
+        subs = get_subscriptions(chat_id)
+        if not subs:
+            update.message.reply_text("⚠️ Нет активных подписок.")
+            return
+
+        messages = []
+        for device_id in subs:
+            data = latest_data.get(device_id)
+            if data:
+                msg = format_message(device_id, data["timestamp"], data["payload"])
+                messages.append(msg)
+
+        if messages:
+            for m in messages:
+                update.message.reply_text(m, parse_mode='Markdown')
+        else:
+            update.message.reply_text("⚠️ Нет данных для подписанных устройств.")
+    except Exception as e:
+        logger.error(f"Ошибка в команде /status: {e}")
+
 def notify_subscribers(device_id, timestamp, payload):
-    """Уведомить подписчиков об изменениях"""
+    """Уведомление подписчиков об изменениях"""
     try:
         bot = Bot(token=BOT_TOKEN)
         msg = format_message(device_id, timestamp, payload)
@@ -92,7 +235,6 @@ def notify_subscribers(device_id, timestamp, payload):
                 except Exception as e:
                     logger.error(f"Ошибка отправки сообщения {chat_id}: {e}")
 
-        # Обновляем предыдущее состояние
         previous_states[f"{chat_id}:{device_id}"] = {"Eng_state": current_state}
     except Exception as e:
         logger.error(f"Ошибка в notify_subscribers: {e}")
@@ -108,17 +250,15 @@ def stop_bot(updater):
         logger.error(f"Ошибка при остановке бота: {e}")
 
 def start_bot():
-    """Запуск бота с защитой от конфликтов"""
+    """Запуск бота"""
     try:
         logger.info("Инициализация бота...")
         
         updater = Updater(BOT_TOKEN, use_context=True)
         dp = updater.dispatcher
         
-        # Добавляем глобальный обработчик ошибок
         dp.add_error_handler(error_handler)
         
-        # Регистрируем обработчики команд
         handlers = [
             CommandHandler("start", start),
             CommandHandler("subscribe", subscribe),
@@ -133,7 +273,6 @@ def start_bot():
         for handler in handlers:
             dp.add_handler(handler)
         
-        # Очищаем предыдущие обновления
         updater.bot.delete_webhook(drop_pending_updates=True)
         
         logger.info("Запуск бота в режиме polling...")
