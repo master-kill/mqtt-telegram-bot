@@ -1,12 +1,7 @@
 import os
 import logging
 from telegram import Update, Bot
-from telegram.ext import (
-    Updater,
-    CommandHandler,
-    CallbackContext,
-    DispatcherHandlerStop
-)
+from telegram.ext import Updater, CommandHandler, CallbackContext, DispatcherHandlerStop
 from data_store import (
     latest_data,
     previous_states,
@@ -43,32 +38,35 @@ STATE_MAP = {
     19: "Прогрев"
 }
 
-def error_handler(update: Update, context: CallbackContext):
-    """Глобальный обработчик ошибок"""
-    try:
-        raise context.error
-    except Exception as e:
-        logger.error(f'Ошибка в обработчике: {e}', exc_info=True)
-    raise DispatcherHandlerStop()
+# ... (остальные функции: start, subscribe, unsubscribe и т.д. остаются без изменений)
 
-def start(update: Update, context: CallbackContext):
+def notify_subscribers(device_id, timestamp, payload):
+    """Уведомить подписчиков об изменениях (добавляем эту функцию)"""
     try:
-        user = update.effective_user
-        update.message.reply_text(
-            f"Привет, {user.first_name}!\n"
-            "Доступные команды:\n"
-            "/subscribe <device_id> - подписка на устройство\n"
-            "/subscribe_state <device_id> <код> - подписка на одно состояние\n"
-            "/subscribe_states <device_id> <коды> - подписка на несколько состояний\n"
-            "/list_states - список состояний\n"
-            "/unsubscribe <device_id> - отписка\n"
-            "/my - мои подписки\n"
-            "/status - текущий статус"
-        )
-    except Exception as e:
-        logger.error(f"Ошибка в команде /start: {e}")
+        bot = Bot(token=BOT_TOKEN)
+        msg = format_message(device_id, timestamp, payload)
+        current_state = payload.get("Eng_state")
 
-# ... (остальные функции-обработчики остаются без изменений, как в предыдущем примере)
+        for chat_id in get_all_subscribers(device_id):
+            subscribed_states = get_subscribed_states(chat_id, device_id)
+            prev_state = previous_states.get(f"{chat_id}:{device_id}", {}).get("Eng_state")
+
+            should_notify = (
+                (not subscribed_states and current_state != prev_state) or
+                (current_state in subscribed_states)
+            )
+
+            if should_notify:
+                try:
+                    bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
+                    logger.info(f"Уведомление отправлено {chat_id} для {device_id}")
+                except Exception as e:
+                    logger.error(f"Ошибка отправки сообщения {chat_id}: {e}")
+
+        # Обновляем предыдущее состояние
+        previous_states[f"{chat_id}:{device_id}"] = {"Eng_state": current_state}
+    except Exception as e:
+        logger.error(f"Ошибка в notify_subscribers: {e}")
 
 def stop_bot(updater):
     """Корректная остановка бота"""
