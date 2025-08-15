@@ -104,7 +104,7 @@ def subscribe_states(update: Update, context: CallbackContext):
 
     device_id = context.args[0]
     try:
-        state_codes = [int(code) for code in context.args[1].split(',')]
+        state_codes = [int(code.strip()) for code in context.args[1].split(',')]
         invalid_codes = [code for code in state_codes if code not in STATE_MAP]
         
         if invalid_codes:
