@@ -1,7 +1,12 @@
 import os
 import logging
 from telegram import Update, Bot
-from telegram.ext import Updater, CommandHandler, CallbackContext, DispatcherHandlerStop
+from telegram.ext import (
+    Updater,
+    CommandHandler,
+    CallbackContext,
+    DispatcherHandlerStop
+)
 from data_store import (
     latest_data,
     previous_states,
@@ -38,10 +43,34 @@ STATE_MAP = {
     19: "Прогрев"
 }
 
-# ... (остальные функции: start, subscribe, unsubscribe и т.д. остаются без изменений)
+def error_handler(update: Update, context: CallbackContext):
+    """Глобальный обработчик ошибок"""
+    try:
+        raise context.error
+    except Exception as e:
+        logger.error(f'Ошибка в обработчике: {e}', exc_info=True)
+    raise DispatcherHandlerStop()
+
+def start(update: Update, context: CallbackContext):
+    """Обработчик команды /start"""
+    try:
+        user = update.effective_user
+        update.message.reply_text(
+            f"Привет, {user.first_name}!\n"
+            "Доступные команды:\n"
+            "/subscribe <device_id> - подписка на устройство\n"
+            "/subscribe_state <device_id> <код> - подписка на одно состояние\n"
+            "/subscribe_states <device_id> <коды> - подписка на несколько состояний\n"
+            "/list_states - список состояний\n"
+            "/unsubscribe <device_id> - отписка\n"
+            "/my - мои подписки\n"
+            "/status - текущий статус"
+        )
+    except Exception as e:
+        logger.error(f"Ошибка в команде /start: {e}")
 
 def notify_subscribers(device_id, timestamp, payload):
-    """Уведомить подписчиков об изменениях (добавляем эту функцию)"""
+    """Уведомить подписчиков об изменениях"""
     try:
         bot = Bot(token=BOT_TOKEN)
         msg = format_message(device_id, timestamp, payload)
