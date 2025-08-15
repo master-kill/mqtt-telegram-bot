@@ -74,6 +74,10 @@ def remove_subscription(chat_id, device_id):
         logger.error(f"Ошибка удаления подписки: {e}")
         return False
 
+def add_state_subscription(chat_id, device_id, state_code):
+    """Добавить подписку на одно состояние (обёртка для add_state_subscriptions)"""
+    return add_state_subscriptions(chat_id, device_id, [state_code])
+
 def add_state_subscriptions(chat_id, device_id, state_codes):
     """Добавить подписку на несколько состояний"""
     try:
