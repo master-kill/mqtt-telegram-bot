@@ -66,7 +66,7 @@ def remove_subscription(chat_id, device_id):
         records = sheet.get_all_records()
         for i, row in enumerate(records):
             if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
-                sheet.delete_rows(i+2)  # +2 из-за заголовка
+                sheet.delete_rows(i+2)
                 logger.info(f"Удалена подписка: {chat_id} -> {device_id}")
                 return True
         return False
@@ -75,16 +75,19 @@ def remove_subscription(chat_id, device_id):
         return False
 
 def add_state_subscription(chat_id, device_id, state_code):
-    """Добавить подписку на одно состояние (обёртка для add_state_subscriptions)"""
+    """Добавить подписку на одно состояние"""
     return add_state_subscriptions(chat_id, device_id, [state_code])
 
 def add_state_subscriptions(chat_id, device_id, state_codes):
-    """Добавить подписку на несколько состояний"""
+    """Добавить подписку только на валидные состояния"""
     try:
-        # Преобразуем и проверяем коды состояний
-        state_codes_str = [str(int(code)) for code in state_codes]
-        unique_states = list(set(state_codes_str))
+        # Фильтруем только валидные состояния
+        valid_states = [str(code) for code in state_codes if code in STATE_MAP]
         
+        if not valid_states:
+            logger.error("Нет валидных состояний для подписки")
+            return False
+            
         records = sheet.get_all_records()
         for i, row in enumerate(records):
             if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
@@ -92,34 +95,36 @@ def add_state_subscriptions(chat_id, device_id, state_codes):
                 current_states = []
                 states_value = row.get('states', '')
                 if states_value and isinstance(states_value, str):
-                    current_states = states_value.split(',')
+                    current_states = [s for s in states_value.split(',') if s.strip()]
                 
-                # Объединяем и убираем дубли
-                updated_states = list(set(current_states + unique_states))
-                updated_states = [s for s in updated_states if s.strip()]
+                # Объединяем, сохраняя только валидные состояния
+                updated_states = list(set(current_states + valid_states))
+                updated_states = [s for s in updated_states if s and int(s) in STATE_MAP]
                 
-                # Обновляем ячейку
                 sheet.update_cell(i+2, 3, ','.join(updated_states))
                 logger.info(f"Обновлены состояния для {device_id}: {updated_states}")
                 return True
         
-        # Если подписки не существовало
-        sheet.append_row([chat_id, device_id, ','.join(unique_states)])
-        logger.info(f"Создана новая подписка с состояниями: {unique_states}")
+        # Если подписки не было - создаем новую только с валидными состояниями
+        sheet.append_row([chat_id, device_id, ','.join(valid_states)])
+        logger.info(f"Создана подписка для {device_id} с состояниями: {valid_states}")
         return True
     except Exception as e:
         logger.error(f"Ошибка добавления подписок: {e}")
         return False
 
 def get_subscribed_states(chat_id, device_id):
-    """Получить подписанные состояния"""
+    """Получить только валидные подписанные состояния"""
     try:
         records = sheet.get_all_records()
         for row in records:
             if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
                 states = row.get('states', '')
-                if states and isinstance(states, str):
-                    return [int(s) for s in states.split(',') if s.strip()]
+                if isinstance(states, str):
+                    # Фильтруем только числа, которые есть в STATE_MAP
+                    return [int(s) for s in states.split(',') 
+                           if s.strip() and s.strip().isdigit() 
+                           and int(s.strip()) in STATE_MAP]
         return []
     except Exception as e:
         logger.error(f"Ошибка получения состояний: {e}")
