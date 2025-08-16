@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Карта состояний
+# Карта состояний (должна быть синхронизирована с устройствами)
 STATE_MAP = {
     1: "Готов",
     2: "Не готов",
@@ -41,6 +41,7 @@ STATE_MAP = {
     11: "Остановка",
     15: "Нагружается",
     19: "Прогрев"
+    # Добавьте другие коды по мере необходимости
 }
 
 def error_handler(update: Update, context: CallbackContext):
@@ -70,7 +71,7 @@ def start(update: Update, context: CallbackContext):
         logger.error(f"Ошибка в команде /start: {e}")
 
 def subscribe(update: Update, context: CallbackContext):
-    """Обработчик команды /subscribe"""
+    """Подписка на все состояния устройства"""
     try:
         chat_id = update.effective_chat.id
         if len(context.args) != 1:
@@ -78,19 +79,108 @@ def subscribe(update: Update, context: CallbackContext):
             return
 
         device_id = context.args[0]
-        if device_id not in latest_data:
-            update.message.reply_text(f"❌ Устройство {device_id} не найдено")
-            return
-
         if add_subscription(chat_id, device_id):
-            update.message.reply_text(f"✅ Подписка на {device_id} оформлена")
+            update.message.reply_text(f"✅ Подписка на {device_id} оформлена (все состояния)")
         else:
             update.message.reply_text("❌ Ошибка при подписке")
     except Exception as e:
         logger.error(f"Ошибка в команде /subscribe: {e}")
 
+def subscribe_state(update: Update, context: CallbackContext):
+    """Подписка на одно состояние"""
+    try:
+        chat_id = update.effective_chat.id
+        if len(context.args) != 2:
+            update.message.reply_text(
+                "❗ Формат: /subscribe_state <device_id> <код>\n"
+                "Пример: /subscribe_state generator1 7"
+            )
+            return
+
+        device_id, state_code = context.args[0], context.args[1]
+        try:
+            state_code = int(state_code)
+            if state_code not in STATE_MAP:
+                raise ValueError
+        except ValueError:
+            update.message.reply_text("❌ Некорректный код состояния")
+            return
+
+        if add_state_subscription(chat_id, device_id, state_code):
+            update.message.reply_text(
+                f"✅ Подписка на состояние {STATE_MAP[state_code]} ({state_code}) для {device_id} оформлена"
+            )
+        else:
+            update.message.reply_text("❌ Ошибка при подписке")
+    except Exception as e:
+        logger.error(f"Ошибка в команде /subscribe_state: {e}")
+
+def subscribe_states(update: Update, context: CallbackContext):
+    """Пакетная подписка на состояния"""
+    try:
+        chat_id = update.effective_chat.id
+        if len(context.args) < 2:
+            update.message.reply_text(
+                "❗ Формат: /subscribe_states <device_id> <код1>,<код2>,...\n"
+                "Пример: /subscribe_states generator1 7,8,9"
+            )
+            return
+
+        device_id = context.args[0]
+        try:
+            # Получаем и проверяем коды состояний
+            state_codes = []
+            invalid_codes = []
+            
+            for code in context.args[1].split(','):
+                try:
+                    code_int = int(code.strip())
+                    if code_int in STATE_MAP:
+                        state_codes.append(code_int)
+                    else:
+                        invalid_codes.append(code)
+                except ValueError:
+                    invalid_codes.append(code)
+
+            if not state_codes:
+                update.message.reply_text(
+                    "❌ Не указано ни одного валидного кода состояния\n"
+                    "Используйте /list_states для просмотра доступных состояний"
+                )
+                return
+
+            # Добавляем подписки
+            if add_state_subscriptions(chat_id, device_id, state_codes):
+                # Формируем ответ
+                state_descriptions = [f"{code} ({STATE_MAP[code]})" for code in state_codes]
+                message = [f"✅ Успешно подписались на состояния для {device_id}:"]
+                message.append(", ".join(state_descriptions))
+                
+                if invalid_codes:
+                    message.append(f"\n❌ Некорректные коды (игнорированы): {', '.join(invalid_codes)}")
+                
+                update.message.reply_text("\n".join(message))
+            else:
+                update.message.reply_text("❌ Ошибка при оформлении подписок")
+                
+        except Exception as e:
+            logger.error(f"Ошибка обработки кодов состояний: {e}")
+            update.message.reply_text("❌ Ошибка при обработке команды")
+    except Exception as e:
+        logger.error(f"Ошибка в subscribe_states: {e}")
+        update.message.reply_text("❌ Произошла внутренняя ошибка")
+
+def list_states(update: Update, context: CallbackContext):
+    """Показать доступные состояния"""
+    try:
+        message = "📋 Доступные состояния:\n" + \
+            "\n".join([f"{code}: {name}" for code, name in STATE_MAP.items()])
+        update.message.reply_text(message)
+    except Exception as e:
+        logger.error(f"Ошибка в команде /list_states: {e}")
+
 def unsubscribe(update: Update, context: CallbackContext):
-    """Обработчик команды /unsubscribe"""
+    """Отписаться от устройства"""
     try:
         chat_id = update.effective_chat.id
         if len(context.args) != 1:
@@ -105,68 +195,8 @@ def unsubscribe(update: Update, context: CallbackContext):
     except Exception as e:
         logger.error(f"Ошибка в команде /unsubscribe: {e}")
 
-def subscribe_state(update: Update, context: CallbackContext):
-    """Обработчик команды /subscribe_state"""
-    try:
-        chat_id = update.effective_chat.id
-        if len(context.args) != 2:
-            update.message.reply_text("❗ Формат: /subscribe_state <device_id> <код>")
-            return
-
-        device_id, state_code = context.args[0], context.args[1]
-        try:
-            state_code = int(state_code)
-            if state_code not in STATE_MAP:
-                raise ValueError
-        except ValueError:
-            update.message.reply_text("❌ Некорректный код состояния")
-            return
-
-        if add_state_subscription(chat_id, device_id, state_code):
-            update.message.reply_text(f"✅ Подписка на состояние {STATE_MAP[state_code]} ({state_code}) оформлена")
-        else:
-            update.message.reply_text("❌ Ошибка при подписке")
-    except Exception as e:
-        logger.error(f"Ошибка в команде /subscribe_state: {e}")
-
-def subscribe_states(update: Update, context: CallbackContext):
-    """Обработчик команды /subscribe_states"""
-    try:
-        chat_id = update.effective_chat.id
-        if len(context.args) < 2:
-            update.message.reply_text("❗ Формат: /subscribe_states <device_id> <коды через запятую>")
-            return
-
-        device_id = context.args[0]
-        try:
-            state_codes = [int(code.strip()) for code in context.args[1].split(',')]
-            invalid_codes = [code for code in state_codes if code not in STATE_MAP]
-            
-            if invalid_codes:
-                update.message.reply_text(f"❌ Некорректные коды: {', '.join(map(str, invalid_codes))}")
-                return
-
-            if add_state_subscriptions(chat_id, device_id, state_codes):
-                state_names = [f"{code} ({STATE_MAP[code]})" for code in state_codes]
-                update.message.reply_text(f"✅ Подписки оформлены на: {', '.join(state_names)}")
-            else:
-                update.message.reply_text("❌ Ошибка при оформлении подписок")
-        except ValueError:
-            update.message.reply_text("❌ Коды должны быть числами через запятую")
-    except Exception as e:
-        logger.error(f"Ошибка в команде /subscribe_states: {e}")
-
-def list_states(update: Update, context: CallbackContext):
-    """Обработчик команды /list_states"""
-    try:
-        message = "📋 Доступные состояния:\n" + \
-            "\n".join([f"{code}: {name}" for code, name in STATE_MAP.items()])
-        update.message.reply_text(message)
-    except Exception as e:
-        logger.error(f"Ошибка в команде /list_states: {e}")
-
 def my_subscriptions(update: Update, context: CallbackContext):
-    """Обработчик команды /my"""
+    """Показать мои подписки"""
     try:
         chat_id = update.effective_chat.id
         subs = get_subscriptions(chat_id)
@@ -187,9 +217,10 @@ def my_subscriptions(update: Update, context: CallbackContext):
         update.message.reply_text("\n".join(message))
     except Exception as e:
         logger.error(f"Ошибка в команде /my: {e}")
+        update.message.reply_text("❌ Произошла ошибка при получении подписок")
 
 def status(update: Update, context: CallbackContext):
-    """Обработчик команды /status"""
+    """Показать статус подписанных устройств"""
     try:
         chat_id = update.effective_chat.id
         subs = get_subscriptions(chat_id)
@@ -213,7 +244,7 @@ def status(update: Update, context: CallbackContext):
         logger.error(f"Ошибка в команде /status: {e}")
 
 def notify_subscribers(device_id, timestamp, payload):
-    """Уведомление подписчиков об изменениях"""
+    """Уведомить подписчиков об изменениях"""
     try:
         bot = Bot(token=BOT_TOKEN)
         msg = format_message(device_id, timestamp, payload)
