@@ -152,23 +152,52 @@ def get_subscriptions(chat_id):
     try:
         _initialize_google_sheet_if_possible()
         target_chat = _normalize_chat_id(chat_id)
-        if sheet:
-            records = sheet.get_all_records()
-        else:
+
+        # Память
+        if not sheet:
             with _mem_lock:
-                records = list(_mem_records)
+                return list({
+                    str(row.get('device_id', '')).strip()
+                    for row in _mem_records
+                    if _normalize_chat_id(row.get('chat_id', '')) == target_chat and str(row.get('device_id', '')).strip()
+                })
+
+        # Читаем сырые строки
+        header_row = sheet.row_values(1)
+        values = sheet.get_all_values()[1:]
+
+        def norm(h):
+            return ''.join(str(h).lower().strip().replace('_', '').split())
+
+        header_map = {norm(h): idx for idx, h in enumerate(header_row)}
+
+        def col_index(*cands):
+            for c in cands:
+                if c in header_map:
+                    return header_map[c]
+            return None
+
+        chat_idx = col_index('chatid', 'chat_id', 'chat id', 'chat')
+        dev_idx = col_index('deviceid', 'device_id', 'device id', 'device', 'объект', 'устройство')
+
+        # Фоллбек на стандартные колонки (A=chat_id, B=device_id)
+        if chat_idx is None:
+            chat_idx = 0
+        if dev_idx is None:
+            dev_idx = 1
+
         devices = []
-        for row in records:
-            row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
-            if row_chat != target_chat:
+        for row in values:
+            if not row:
                 continue
-            device = _get_row_value(row, ['device_id', 'deviceId', 'DeviceID'])
-            if device is None:
+            rchat = _normalize_chat_id(row[chat_idx]) if chat_idx < len(row) else ''
+            if rchat != target_chat:
                 continue
-            device_str = str(device).strip()
-            if device_str and device_str not in devices:
-                devices.append(device_str)
+            device = str(row[dev_idx]).strip() if dev_idx < len(row) else ''
+            if device and device not in devices:
+                devices.append(device)
         return devices
+
     except Exception as e:
         logger.error(f"Ошибка получения подписок: {e}")
         return []
@@ -291,24 +320,55 @@ def get_subscribed_states(chat_id, device_id):
         _initialize_google_sheet_if_possible()
         target_chat = _normalize_chat_id(chat_id)
         target_device = str(device_id).strip()
-        if sheet:
-            records = sheet.get_all_records()
-            for row in records:
-                row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
-                row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
-                if row_chat == target_chat and row_dev == target_device:
-                    states_value = _get_row_value(row, ['states', 'States', 'state'])
-                    parsed = [int(s) for s in _parse_states_value(states_value) if int(s) in STATE_MAP]
-                    return parsed
-            return []
-        else:
+
+        # Память
+        if not sheet:
             with _mem_lock:
                 for row in _mem_records:
                     if _normalize_chat_id(row.get('chat_id', '')) == target_chat and \
                        str(row.get('device_id', '')).strip() == target_device:
-                        parsed = [int(s) for s in _parse_states_value(row.get('states', '')) if int(s) in STATE_MAP]
-                        return parsed
+                        return [int(s) for s in _parse_states_value(row.get('states', '')) if int(s) in STATE_MAP]
             return []
+
+        # Читаем сырые значения
+        header_row = sheet.row_values(1)
+        values = sheet.get_all_values()[1:]
+
+        def norm(h):
+            return ''.join(str(h).lower().strip().replace('_', '').split())
+
+        header_map = {norm(h): idx for idx, h in enumerate(header_row)}
+
+        def col_index(*cands):
+            for c in cands:
+                if c in header_map:
+                    return header_map[c]
+            return None
+
+        chat_idx   = col_index('chatid', 'chat_id', 'chat id', 'chat')
+        dev_idx    = col_index('deviceid', 'device_id', 'device id', 'device', 'объект', 'устройство')
+        states_idx = col_index('states', 'state', 'состояния', 'состояние')
+
+        if chat_idx is None:
+            chat_idx = 0
+        if dev_idx is None:
+            dev_idx = 1
+        if states_idx is None:
+            states_idx = 2
+
+        for row in values:
+            if not row:
+                continue
+            rchat = _normalize_chat_id(row[chat_idx]) if chat_idx < len(row) else ''
+            rdev  = str(row[dev_idx]).strip() if dev_idx < len(row) else ''
+            if rchat != target_chat or rdev != target_device:
+                continue
+            raw_states = row[states_idx] if states_idx < len(row) else ''
+            parsed = [int(s) for s in _parse_states_value(raw_states) if int(s) in STATE_MAP]
+            return parsed
+
+        return []
+
     except Exception as e:
         logger.error(f"Ошибка получения состояний: {e}")
         return []
