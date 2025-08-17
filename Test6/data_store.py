@@ -3,6 +3,7 @@ import json
 import logging
 import threading
 import gspread
+import base64
 from oauth2client.service_account import ServiceAccountCredentials
 from constants import STATE_MAP
 
@@ -68,6 +69,31 @@ previous_states = {}
 _mem_lock = threading.Lock()
 _mem_records = []  # {"chat_id": "...", "device_id": "...", "states": "1,2,3"}
 
+def _load_google_credentials():
+    """Возвращает (creds_json, source) или (None, reason). Поддерживает JSON, base64, путь к файлу."""
+    value = os.getenv("GOOGLE_CREDENTIALS")
+    if not value:
+        return None, "GOOGLE_CREDENTIALS is missing"
+    # Прямой JSON
+    try:
+        return json.loads(value), "json"
+    except Exception:
+        pass
+    # Base64 JSON
+    try:
+        decoded = base64.b64decode(value).decode("utf-8")
+        return json.loads(decoded), "base64"
+    except Exception:
+        pass
+    # Путь к файлу
+    if os.path.exists(value):
+        try:
+            with open(value, "r", encoding="utf-8") as f:
+                return json.load(f), "file"
+        except Exception:
+            pass
+    return None, "invalid GOOGLE_CREDENTIALS format"
+
 sheet = None
 
 def _initialize_google_sheet_if_possible():
@@ -75,21 +101,46 @@ def _initialize_google_sheet_if_possible():
     if sheet is not None:
         return
     try:
-        google_creds = os.getenv("GOOGLE_CREDENTIALS")
-        if not google_creds:
-            logger.warning("GOOGLE_CREDENTIALS не установлена. Работаем без Google Sheets.")
+        creds_json, source = _load_google_credentials()
+        if not creds_json:
+            logger.warning("Google Sheets: нет валидных учетных данных (%s). Фоллбек в память.", source)
             return
-
-        creds_json = json.loads(google_creds)
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/drive"
         ]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
         client = gspread.authorize(creds)
-        sheet_obj = client.open(os.getenv("GOOGLE_SHEET_NAME", "MQTT Subscriptions")).sheet1
-        sheet = sheet_obj
-        logger.info("Успешное подключение к Google Sheets")
+
+        sheet_id = os.getenv("GOOGLE_SHEET_ID")
+        sheet_name = os.getenv("GOOGLE_SHEET_NAME")
+        worksheet_name = os.getenv("GOOGLE_WORKSHEET_NAME")
+
+        if sheet_id:
+            doc = client.open_by_key(sheet_id)
+            where = f"by id: {sheet_id}"
+        elif sheet_name:
+            doc = client.open(sheet_name)
+            where = f"by name: {sheet_name}"
+        else:
+            default_name = "MQTT Subscriptions"
+            doc = client.open(default_name)
+            where = f"by default name: {default_name}"
+
+        if worksheet_name:
+            ws = doc.worksheet(worksheet_name)
+            ws_where = f"worksheet: {worksheet_name}"
+        else:
+            ws = doc.sheet1
+            ws_where = "sheet1"
+
+        sheet = ws
+        logger.info(
+            "Успешное подключение к Google Sheets (%s, %s) сервис-аккаунт=%s",
+            where,
+            ws_where,
+            creds_json.get("client_email")
+        )
     except Exception as e:
         logger.error(f"Ошибка инициализации Google Sheets: {e}")
         sheet = None
