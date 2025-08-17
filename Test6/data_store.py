@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import threading
+import re
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from constants import STATE_MAP
@@ -38,34 +39,26 @@ def _get_row_value(row: dict, keys):
 
 
 def _parse_states_value(value):
-    """Принимает значение из ячейки "states" (строка/число/список) и возвращает список int-кодов."""
+    """Parse states from string/list/number to list[int]. Supports commas, semicolons, spaces."""
     result = []
     try:
         if value is None:
             return []
-        # Если список
         if isinstance(value, list):
             for item in value:
                 try:
-                    code = int(str(item).strip())
-                    result.append(code)
+                    result.append(int(str(item).strip()))
                 except Exception:
                     continue
             return result
-        # Если число
         if isinstance(value, (int, float)):
-            iv = int(value)
-            return [iv]
-        # Иначе строка
+            return [int(value)]
         s = str(value)
-        parts = s.split(',')
-        for part in parts:
-            part_clean = part.strip()
-            if not part_clean:
-                continue
+        # Find all integer sequences
+        nums = re.findall(r"\d+", s)
+        for n in nums:
             try:
-                code = int(part_clean)
-                result.append(code)
+                result.append(int(n))
             except Exception:
                 continue
         return result
@@ -121,11 +114,16 @@ def get_subscriptions(chat_id):
             with _mem_lock:
                 records = list(_mem_records)
         devices = []
-        for row in records:
+        for i, row in enumerate(records):
             row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
             if row_chat != target_chat:
                 continue
             device = _get_row_value(row, ['device_id', 'deviceId', 'DeviceID'])
+            if (device is None or str(device).strip() == '') and sheet:
+                try:
+                    device = sheet.cell(i + 2, 2).value
+                except Exception:
+                    device = None
             if device is None:
                 continue
             device_str = str(device).strip()
@@ -217,16 +215,17 @@ def add_state_subscriptions(chat_id, device_id, state_codes):
                 row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
                 row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
                 if row_chat == _normalize_chat_id(chat_id) and row_dev == str(device_id).strip():
-                    # Получаем текущие состояния
                     states_value = _get_row_value(row, ['states', 'States', 'state'])
+                    if (states_value is None or str(states_value).strip() == ''):
+                        try:
+                            states_value = sheet.cell(i + 2, 3).value
+                        except Exception:
+                            states_value = None
                     current_states = _parse_states_value(states_value)
-                    # Объединяем, сохраняя только валидные состояния
                     updated = sorted(set([int(s) for s in current_states if int(s) in STATE_MAP] + valid_states))
-                    # Пишем строкой
                     sheet.update_cell(i + 2, 3, ','.join(str(s) for s in updated))
                     logger.info(f"Обновлены состояния для {device_id}: {updated}")
                     return True
-            # Если подписки не было - создаем новую только с валидными состояниями
             sheet.append_row([chat_id, device_id, ','.join(str(s) for s in sorted(set(valid_states)))])
             logger.info(f"Создана подписка для {device_id} с состояниями: {valid_states}")
             return True
@@ -260,11 +259,16 @@ def get_subscribed_states(chat_id, device_id):
         target_device = str(device_id).strip()
         if sheet:
             records = sheet.get_all_records()
-            for row in records:
+            for i, row in enumerate(records):
                 row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
                 row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
                 if row_chat == target_chat and row_dev == target_device:
                     states_value = _get_row_value(row, ['states', 'States', 'state'])
+                    if (states_value is None or str(states_value).strip() == ''):
+                        try:
+                            states_value = sheet.cell(i + 2, 3).value
+                        except Exception:
+                            states_value = None
                     parsed = [int(s) for s in _parse_states_value(states_value) if int(s) in STATE_MAP]
                     return parsed
             return []
