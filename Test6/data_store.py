@@ -13,6 +13,65 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Вспомогательные утилиты парсинга
+
+def _normalize_chat_id(value) -> str:
+    try:
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        if isinstance(value, (int,)):
+            return str(value)
+        s = str(value).strip()
+        # Обрезаем возможное ".0" от числовых представлений
+        if s.endswith('.0') and s.replace('.', '', 1).isdigit():
+            return s[:-2]
+        return s
+    except Exception:
+        return str(value)
+
+
+def _get_row_value(row: dict, keys):
+    for key in keys:
+        if key in row:
+            return row.get(key)
+    return None
+
+
+def _parse_states_value(value):
+    """Принимает значение из ячейки "states" (строка/число/список) и возвращает список int-кодов."""
+    result = []
+    try:
+        if value is None:
+            return []
+        # Если список
+        if isinstance(value, list):
+            for item in value:
+                try:
+                    code = int(str(item).strip())
+                    result.append(code)
+                except Exception:
+                    continue
+            return result
+        # Если число
+        if isinstance(value, (int, float)):
+            iv = int(value)
+            return [iv]
+        # Иначе строка
+        s = str(value)
+        parts = s.split(',')
+        for part in parts:
+            part_clean = part.strip()
+            if not part_clean:
+                continue
+            try:
+                code = int(part_clean)
+                result.append(code)
+            except Exception:
+                continue
+        return result
+    except Exception:
+        return []
+
 # Переменные для хранения в памяти
 latest_data = {}
 previous_states = {}
@@ -43,7 +102,7 @@ def _initialize_google_sheet_if_possible():
         ]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
         client = gspread.authorize(creds)
-        sheet_obj = client.open("MQTT Subscriptions").sheet1
+        sheet_obj = client.open(os.getenv("GOOGLE_SHEET_NAME", "MQTT Subscriptions")).sheet1
         sheet = sheet_obj
         logger.info("Успешное подключение к Google Sheets")
     except Exception as e:
@@ -55,16 +114,24 @@ def get_subscriptions(chat_id):
     """Получить все подписки пользователя"""
     try:
         _initialize_google_sheet_if_possible()
+        target_chat = _normalize_chat_id(chat_id)
         if sheet:
             records = sheet.get_all_records()
         else:
             with _mem_lock:
                 records = list(_mem_records)
-        return [
-            row['device_id']
-            for row in records
-            if str(row.get('chat_id', '')) == str(chat_id)
-        ]
+        devices = []
+        for row in records:
+            row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
+            if row_chat != target_chat:
+                continue
+            device = _get_row_value(row, ['device_id', 'deviceId', 'DeviceID'])
+            if device is None:
+                continue
+            device_str = str(device).strip()
+            if device_str and device_str not in devices:
+                devices.append(device_str)
+        return devices
     except Exception as e:
         logger.error(f"Ошибка получения подписок: {e}")
         return []
@@ -77,7 +144,9 @@ def add_subscription(chat_id, device_id):
         if sheet:
             records = sheet.get_all_records()
             for row in records:
-                if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
+                row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
+                row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
+                if row_chat == _normalize_chat_id(chat_id) and row_dev == str(device_id).strip():
                     return True
             sheet.append_row([chat_id, device_id, ''])
             logger.info(f"Добавлена подписка: {chat_id} -> {device_id}")
@@ -85,11 +154,12 @@ def add_subscription(chat_id, device_id):
         else:
             with _mem_lock:
                 for row in _mem_records:
-                    if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
+                    if _normalize_chat_id(row.get('chat_id', '')) == _normalize_chat_id(chat_id) and \
+                       str(row.get('device_id', '')).strip() == str(device_id).strip():
                         return True
                 _mem_records.append({
-                    'chat_id': str(chat_id),
-                    'device_id': device_id,
+                    'chat_id': _normalize_chat_id(chat_id),
+                    'device_id': str(device_id).strip(),
                     'states': ''
                 })
             logger.info(f"Добавлена подписка (memory): {chat_id} -> {device_id}")
@@ -106,7 +176,9 @@ def remove_subscription(chat_id, device_id):
         if sheet:
             records = sheet.get_all_records()
             for i, row in enumerate(records):
-                if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
+                row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
+                row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
+                if row_chat == _normalize_chat_id(chat_id) and row_dev == str(device_id).strip():
                     sheet.delete_rows(i + 2)
                     logger.info(f"Удалена подписка: {chat_id} -> {device_id}")
                     return True
@@ -114,7 +186,8 @@ def remove_subscription(chat_id, device_id):
         else:
             with _mem_lock:
                 for i, row in enumerate(_mem_records):
-                    if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
+                    if _normalize_chat_id(row.get('chat_id', '')) == _normalize_chat_id(chat_id) and \
+                       str(row.get('device_id', '')).strip() == str(device_id).strip():
                         _mem_records.pop(i)
                         logger.info(f"Удалена подписка (memory): {chat_id} -> {device_id}")
                         return True
@@ -133,7 +206,7 @@ def add_state_subscriptions(chat_id, device_id, state_codes):
     """Добавить подписку только на валидные состояния"""
     try:
         _initialize_google_sheet_if_possible()
-        valid_states = [str(code) for code in state_codes if code in STATE_MAP]
+        valid_states = [int(code) for code in state_codes if int(code) in STATE_MAP]
         if not valid_states:
             logger.error("Нет валидных состояний для подписки")
             return False
@@ -141,36 +214,36 @@ def add_state_subscriptions(chat_id, device_id, state_codes):
         if sheet:
             records = sheet.get_all_records()
             for i, row in enumerate(records):
-                if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
-                    current_states = []
-                    states_value = row.get('states', '')
-                    if states_value and isinstance(states_value, str):
-                        current_states = [s for s in states_value.split(',') if s.strip()]
-                    updated_states = list(set(current_states + valid_states))
-                    updated_states = [s for s in updated_states if s and int(s) in STATE_MAP]
-                    sheet.update_cell(i + 2, 3, ','.join(updated_states))
-                    logger.info(f"Обновлены состояния для {device_id}: {updated_states}")
+                row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
+                row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
+                if row_chat == _normalize_chat_id(chat_id) and row_dev == str(device_id).strip():
+                    # Получаем текущие состояния
+                    states_value = _get_row_value(row, ['states', 'States', 'state'])
+                    current_states = _parse_states_value(states_value)
+                    # Объединяем, сохраняя только валидные состояния
+                    updated = sorted(set([int(s) for s in current_states if int(s) in STATE_MAP] + valid_states))
+                    # Пишем строкой
+                    sheet.update_cell(i + 2, 3, ','.join(str(s) for s in updated))
+                    logger.info(f"Обновлены состояния для {device_id}: {updated}")
                     return True
-            sheet.append_row([chat_id, device_id, ','.join(valid_states)])
+            # Если подписки не было - создаем новую только с валидными состояниями
+            sheet.append_row([chat_id, device_id, ','.join(str(s) for s in sorted(set(valid_states)))])
             logger.info(f"Создана подписка для {device_id} с состояниями: {valid_states}")
             return True
         else:
             with _mem_lock:
                 for row in _mem_records:
-                    if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
-                        current_states = []
-                        states_value = row.get('states', '')
-                        if states_value and isinstance(states_value, str):
-                            current_states = [s for s in states_value.split(',') if s.strip()]
-                        updated_states = list(set(current_states + valid_states))
-                        updated_states = [s for s in updated_states if s and int(s) in STATE_MAP]
-                        row['states'] = ','.join(updated_states)
-                        logger.info(f"Обновлены состояния (memory) для {device_id}: {updated_states}")
+                    if _normalize_chat_id(row.get('chat_id', '')) == _normalize_chat_id(chat_id) and \
+                       str(row.get('device_id', '')).strip() == str(device_id).strip():
+                        current_states = _parse_states_value(row.get('states', ''))
+                        updated = sorted(set([int(s) for s in current_states if int(s) in STATE_MAP] + valid_states))
+                        row['states'] = ','.join(str(s) for s in updated)
+                        logger.info(f"Обновлены состояния (memory) для {device_id}: {updated}")
                         return True
                 _mem_records.append({
-                    'chat_id': str(chat_id),
-                    'device_id': device_id,
-                    'states': ','.join(valid_states)
+                    'chat_id': _normalize_chat_id(chat_id),
+                    'device_id': str(device_id).strip(),
+                    'states': ','.join(str(s) for s in sorted(set(valid_states)))
                 })
                 logger.info(f"Создана подписка (memory) для {device_id} с состояниями: {valid_states}")
                 return True
@@ -183,27 +256,25 @@ def get_subscribed_states(chat_id, device_id):
     """Получить только валидные подписанные состояния"""
     try:
         _initialize_google_sheet_if_possible()
+        target_chat = _normalize_chat_id(chat_id)
+        target_device = str(device_id).strip()
         if sheet:
             records = sheet.get_all_records()
             for row in records:
-                if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
-                    states = row.get('states', '')
-                    if isinstance(states, str):
-                        return [
-                            int(s) for s in states.split(',')
-                            if s.strip() and s.strip().isdigit() and int(s.strip()) in STATE_MAP
-                        ]
+                row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
+                row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
+                if row_chat == target_chat and row_dev == target_device:
+                    states_value = _get_row_value(row, ['states', 'States', 'state'])
+                    parsed = [int(s) for s in _parse_states_value(states_value) if int(s) in STATE_MAP]
+                    return parsed
             return []
         else:
             with _mem_lock:
                 for row in _mem_records:
-                    if str(row.get('chat_id', '')) == str(chat_id) and row.get('device_id') == device_id:
-                        states = row.get('states', '')
-                        if isinstance(states, str):
-                            return [
-                                int(s) for s in states.split(',')
-                                if s.strip() and s.strip().isdigit() and int(s.strip()) in STATE_MAP
-                            ]
+                    if _normalize_chat_id(row.get('chat_id', '')) == target_chat and \
+                       str(row.get('device_id', '')).strip() == target_device:
+                        parsed = [int(s) for s in _parse_states_value(row.get('states', '')) if int(s) in STATE_MAP]
+                        return parsed
             return []
     except Exception as e:
         logger.error(f"Ошибка получения состояний: {e}")
@@ -217,16 +288,16 @@ def get_all_subscribers(device_id):
         if sheet:
             records = sheet.get_all_records()
             return [
-                row['chat_id']
+                _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
                 for row in records
-                if row.get('device_id') == device_id
+                if str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip() == str(device_id).strip()
             ]
         else:
             with _mem_lock:
                 return [
-                    row['chat_id']
+                    _normalize_chat_id(row['chat_id'])
                     for row in _mem_records
-                    if row.get('device_id') == device_id
+                    if str(row.get('device_id', '')).strip() == str(device_id).strip()
                 ]
     except Exception as e:
         logger.error(f"Ошибка получения подписчиков: {e}")
