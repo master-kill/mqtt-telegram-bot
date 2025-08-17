@@ -5,6 +5,7 @@ import logging
 import paho.mqtt.client as mqtt
 from bot_handler import notify_subscribers
 from data_store import latest_data, previous_states
+from constants import STATE_MAP
 
 # Настройка логгирования
 logging.basicConfig(

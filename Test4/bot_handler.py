@@ -9,7 +9,6 @@ from telegram.ext import (
 )
 from data_store import (
     latest_data,
-    previous_states,
     get_subscriptions,
     add_subscription,
     remove_subscription,
@@ -19,6 +18,7 @@ from data_store import (
     get_all_subscribers
 )
 from formatter import format_message
+from constants import STATE_MAP
 
 # Настройка логгирования
 logging.basicConfig(
@@ -29,20 +29,6 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Карта состояний (должна быть синхронизирована с устройствами)
-STATE_MAP = {
-    1: "Готов",
-    2: "Не готов",
-    6: "Запуск",
-    7: "В работе",
-    8: "Нагружен",
-    9: "Разгрузка",
-    10: "Расхолаживание",
-    11: "Остановка",
-    15: "Нагружается",
-    19: "Прогрев"
-    # Добавьте другие коды по мере необходимости
-}
 
 def error_handler(update: Update, context: CallbackContext):
     """Глобальный обработчик ошибок"""
@@ -252,12 +238,8 @@ def notify_subscribers(device_id, timestamp, payload):
 
         for chat_id in get_all_subscribers(device_id):
             subscribed_states = get_subscribed_states(chat_id, device_id)
-            prev_state = previous_states.get(f"{chat_id}:{device_id}", {}).get("Eng_state")
 
-            should_notify = (
-                (not subscribed_states and current_state != prev_state) or
-                (current_state in subscribed_states)
-            )
+            should_notify = (not subscribed_states) or (current_state in subscribed_states)
 
             if should_notify:
                 try:
@@ -265,15 +247,13 @@ def notify_subscribers(device_id, timestamp, payload):
                     logger.info(f"Уведомление отправлено {chat_id} для {device_id}")
                 except Exception as e:
                     logger.error(f"Ошибка отправки сообщения {chat_id}: {e}")
-
-        previous_states[f"{chat_id}:{device_id}"] = {"Eng_state": current_state}
     except Exception as e:
         logger.error(f"Ошибка в notify_subscribers: {e}")
 
 def stop_bot(updater):
     """Корректная остановка бота"""
     try:
-        if updater.running:
+        if updater:
             updater.stop()
             updater.is_idle = False
             logger.info("Бот остановлен корректно")
