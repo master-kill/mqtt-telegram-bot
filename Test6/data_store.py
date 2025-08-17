@@ -49,6 +49,9 @@ def _parse_states_value(value):
             iv = int(value)
             return [iv]
         s = str(value)
+        # Обработка маркера 'all' (все состояния)
+        if s.strip().lower() == 'all':
+            return []
         parts = s.split(',')
         for part in parts:
             part_clean = part.strip()
@@ -175,26 +178,36 @@ def add_subscription(chat_id, device_id):
         _initialize_google_sheet_if_possible()
         if sheet:
             records = sheet.get_all_records()
-            for row in records:
+            for i, row in enumerate(records):
                 row_chat = _normalize_chat_id(row.get('chat_id', _get_row_value(row, ['chatId', 'ChatID'])))
                 row_dev = str(_get_row_value(row, ['device_id', 'deviceId', 'DeviceID']) or '').strip()
                 if row_chat == _normalize_chat_id(chat_id) and row_dev == str(device_id).strip():
+                    # Если подписка уже есть, но states пусто — заполняем 'all'
+                    states_value = _get_row_value(row, ['states', 'States', 'state'])
+                    if not str(states_value or '').strip():
+                        sheet.update_cell(i + 2, 3, 'all')
+                        logger.info(f"Дозаполнено states='all' для {chat_id} -> {device_id}")
                     return True
-            sheet.append_row([chat_id, device_id, ''])
-            logger.info(f"Добавлена подписка: {chat_id} -> {device_id}")
+            # Новой строке сразу ставим 'all'
+            sheet.append_row([chat_id, device_id, 'all'])
+            logger.info(f"Добавлена подписка: {chat_id} -> {device_id} (states=all)")
             return True
         else:
             with _mem_lock:
                 for row in _mem_records:
                     if _normalize_chat_id(row.get('chat_id', '')) == _normalize_chat_id(chat_id) and \
                        str(row.get('device_id', '')).strip() == str(device_id).strip():
+                        # Если есть, но пусто — проставляем 'all'
+                        if not str(row.get('states', '')).strip():
+                            row['states'] = 'all'
+                            logger.info(f"Дозаполнено states='all' (memory) для {chat_id} -> {device_id}")
                         return True
                 _mem_records.append({
                     'chat_id': _normalize_chat_id(chat_id),
                     'device_id': str(device_id).strip(),
-                    'states': ''
+                    'states': 'all'
                 })
-            logger.info(f"Добавлена подписка (memory): {chat_id} -> {device_id}")
+            logger.info(f"Добавлена подписка (memory): {chat_id} -> {device_id} (states=all)")
             return True
     except Exception as e:
         logger.error(f"Ошибка добавления подписки: {e}")
